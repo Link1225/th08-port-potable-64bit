@@ -16,10 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test keyboard state bridge
         run: |
-          clang++ -std=c++17 -x objective-c++ \\
-            ios/BringUp/TH08BringUp/TH08IOSKeyboard.mm \\
-            ios/Tests/KeyboardBridgeTests.cpp \\
-            -o /tmp/th08-ios-keyboard-tests
+          clang++ -std=c++17 -x objective-c++ ios/BringUp/TH08BringUp/TH08IOSKeyboard.mm ios/Tests/KeyboardBridgeTests.cpp -o /tmp/th08-ios-keyboard-tests
           /tmp/th08-ios-keyboard-tests
       - name: Install XcodeGen
         run: brew install xcodegen
