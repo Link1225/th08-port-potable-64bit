@@ -2,7 +2,7 @@ import Foundation
 
 enum TH08DataArchiveImport {
     static let requiredNames: Set<String> = ["th08.dat", "thbgm.dat"]
-    private static let archiveMagic = Data("ZGBP".utf8)
+    private static let archiveMagic = Data("PBGZ".utf8)
     private static let pbgHeaderSize = 12
     private static let maximumEntryCount: Int64 = 100_000
     private static let maximumFileTableSize: Int64 = 128 * 1024 * 1024
