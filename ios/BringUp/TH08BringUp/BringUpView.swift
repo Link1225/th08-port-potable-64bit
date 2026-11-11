@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct BringUpView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isImporterPresented = false
     @State private var status = "Import the two original data archives from your own CD."
     @State private var importedDirectory: URL?
@@ -56,6 +57,11 @@ struct BringUpView: View {
                 allowsMultipleSelection: true,
                 onCompletion: handleImport
             )
+            .onChange(of: scenePhase) { phase in
+                if phase != .active {
+                    TH08IOSClearKeyboardState()
+                }
+            }
         }
     }
 
@@ -66,14 +72,18 @@ struct BringUpView: View {
         case .success(let urls):
             isImporting = true
             status = "Importing archives…"
-            do {
-                let directory = try TH08DataArchiveImport.installPair(from: urls)
-                importedDirectory = directory
-                status = "Both archives were imported successfully."
-            } catch {
-                status = error.localizedDescription
+            Task {
+                do {
+                    let directory = try await Task.detached(priority: .userInitiated) {
+                        try TH08DataArchiveImport.installPair(from: urls)
+                    }.value
+                    importedDirectory = directory
+                    status = "Both archives were imported successfully."
+                } catch {
+                    status = error.localizedDescription
+                }
+                isImporting = false
             }
-            isImporting = false
         }
     }
 }

@@ -2,11 +2,13 @@ import Foundation
 
 enum TH08DataArchiveImport {
     static let requiredNames: Set<String> = ["th08.dat", "thbgm.dat"]
+    private static let archiveMagic = Data("ZGBP".utf8)
 
     enum ImportError: LocalizedError {
         case missingFiles
         case unexpectedFiles
         case emptyFile(String)
+        case invalidArchive(String)
         case cannotAccessFile(String)
         case transactionFailed(String)
 
@@ -18,6 +20,8 @@ enum TH08DataArchiveImport {
                 return "The selection must contain only th08.dat and thbgm.dat."
             case .emptyFile(let name):
                 return "\(name) is empty."
+            case .invalidArchive(let name):
+                return "\(name) does not have the expected PBG archive signature."
             case .cannotAccessFile(let name):
                 return "Could not access \(name)."
             case .transactionFailed(let message):
@@ -27,7 +31,7 @@ enum TH08DataArchiveImport {
     }
 
     /// Imports the user's original archives as one directory-level transaction.
-    /// Existing archives remain in place unless both new files are staged.
+    /// Existing archives remain in place unless both files are staged.
     static func installPair(from urls: [URL]) throws -> URL {
         let selectedNames = urls.map { $0.lastPathComponent }
         guard Set(selectedNames) == requiredNames, urls.count == requiredNames.count else {
@@ -87,6 +91,13 @@ enum TH08DataArchiveImport {
             let values = try source.resourceValues(forKeys: [.fileSizeKey])
             guard let size = values.fileSize, size > 0 else {
                 throw ImportError.emptyFile(name)
+            }
+
+            let handle = try FileHandle(forReadingFrom: source)
+            let signature = try handle.read(upToCount: archiveMagic.count) ?? Data()
+            try handle.close()
+            guard signature == archiveMagic else {
+                throw ImportError.invalidArchive(name)
             }
 
             let stagedFile = staging.appendingPathComponent(name)
