@@ -7,6 +7,7 @@ on:
       - port/portable-64bit
     paths:
       - "ios/BringUp/**"
+      - "ios/Tests/**"
       - ".github/workflows/ios-bringup.yml"
 
 jobs:
