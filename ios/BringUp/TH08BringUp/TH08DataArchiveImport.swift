@@ -2,6 +2,8 @@ import Foundation
 
 enum TH08DataArchiveImport {
     static let requiredNames: Set<String> = ["th08.dat", "thbgm.dat"]
+    // PbgArchive::ParseHeader compares a little-endian ReadInt() with the
+    // multi-character constant 'ZGBP'; the bytes on disk are therefore PBGZ.
     private static let archiveMagic = Data("PBGZ".utf8)
     private static let pbgHeaderSize = 12
     private static let maximumEntryCount: Int64 = 100_000
