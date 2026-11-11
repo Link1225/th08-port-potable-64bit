@@ -5,9 +5,11 @@ adapters being developed for the original TH08 engine.
 
 The current checkpoint provides a native bring-up shell, paired import of the
 user's original archives, and a DirectInput-compatible physical-keyboard state
-buffer. The keyboard buffer is not yet consumed by the game engine; the current
-Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
-platform implementation.
+buffer. Import now decodes the retail PBG header and checks the entry count and
+file-table bounds before replacing the stored pair. It does not yet decompress
+or validate every archive entry. The keyboard buffer is not yet consumed by
+the game engine; the current Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL
+runtime still need an iOS platform implementation.
 
 ## Bring-up app
 
