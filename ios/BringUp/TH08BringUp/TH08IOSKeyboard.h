@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 
-void TH08IOSSetKeyState(uint8_t directInputScanCode, int isDown);
+// Uses Win32 virtual-key indices because Controller::GetInput reads the
+// GetKeyboardState-compatible branch when no DirectInput device is present.
+void TH08IOSSetKeyState(uint8_t virtualKeyCode, int isDown);
 void TH08IOSClearKeyboardState(void);
 void TH08IOSGetKeyboardState(uint8_t *destination, size_t destinationLength);
 
