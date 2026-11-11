@@ -1,0 +1,30 @@
+name: iOS bring-up
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - port/portable-64bit
+    paths:
+      - "ios/BringUp/**"
+      - ".github/workflows/ios-bringup.yml"
+
+jobs:
+  simulator-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios/BringUp
+        run: xcodegen generate
+      - name: Build iOS Simulator app
+        run: |
+          xcodebuild \
+            -project ios/BringUp/TH08BringUp.xcodeproj \
+            -scheme TH08BringUp \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
