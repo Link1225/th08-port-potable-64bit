@@ -48,10 +48,10 @@ final class KeyboardCaptureUIView: UIView {
     private func update(_ presses: Set<UIPress>, isDown: Bool) {
         for press in presses {
             guard let key = press.key,
-                  let scanCode = Self.virtualKeyCode(for: key.keyCode) else {
+                  let virtualKeyCode = Self.virtualKeyCode(for: key.keyCode) else {
                 continue
             }
-            TH08IOSSetKeyState(scanCode, isDown ? 1 : 0)
+            TH08IOSSetKeyState(virtualKeyCode, isDown ? 1 : 0)
         }
     }
 
