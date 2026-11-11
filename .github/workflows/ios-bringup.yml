@@ -28,3 +28,14 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Build unsigned iOS device app
+        run: |
+          xcodebuild \
+            -project ios/BringUp/TH08BringUp.xcodeproj \
+            -scheme TH08BringUp \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
