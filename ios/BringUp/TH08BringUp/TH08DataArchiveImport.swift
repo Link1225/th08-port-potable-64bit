@@ -60,9 +60,12 @@ enum TH08DataArchiveImport {
         )
 
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+        var preserveBackup = false
         defer {
             try? fileManager.removeItem(at: staging)
-            try? fileManager.removeItem(at: backup)
+            if !preserveBackup {
+                try? fileManager.removeItem(at: backup)
+            }
         }
 
         for name in requiredNames.sorted() {
@@ -104,7 +107,11 @@ enum TH08DataArchiveImport {
             try fileManager.moveItem(at: staging, to: destination)
         } catch {
             if movedOldDirectory {
-                try? fileManager.moveItem(at: backup, to: destination)
+                do {
+                    try fileManager.moveItem(at: backup, to: destination)
+                } catch {
+                    preserveBackup = true
+                }
             }
             throw ImportError.transactionFailed(error.localizedDescription)
         }
