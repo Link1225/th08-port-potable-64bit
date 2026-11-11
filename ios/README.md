@@ -1,28 +1,34 @@
 # iOS port
 
 This directory contains the native iOS host application and the platform
-adapters needed to bring the original TH08 engine onto iPhone and iPad.
+adapters being developed for the original TH08 engine.
 
-The current checkpoint is deliberately limited to a safe, user-owned game-data
-import shell. It does not yet launch the game: the existing runtime entry point
-in `src/main.cpp` is a Win32/Direct3D 8 application, and the current portable
-renderer is an SDL2/desktop-OpenGL adapter. Neither is an iOS host.
+The current checkpoint provides a native bring-up shell, paired import of the
+user's original archives, and a DirectInput-compatible physical-keyboard state
+buffer. The keyboard buffer is not yet consumed by the game engine; the current
+Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
+platform implementation.
 
 ## Bring-up app
 
-The XcodeGen project in `BringUp/project.yml` builds a small SwiftUI app. It
-imports the two archives supplied by the user:
+The XcodeGen project in `BringUp/project.yml` builds a SwiftUI app. It imports:
 
 - `th08.dat`
 - `thbgm.dat`
 
-Both files must be selected together. The app stages them under
-`Application Support/TH08Data` and replaces the previous pair only after both
-copies have succeeded. Game archives are never committed to this repository.
+Both files must be selected together. They are staged under
+`Application Support/TH08Data` and replace the previous pair only after both
+copies succeed. Game archives are never committed to this repository.
+
+The UIKit keyboard responder captures external keyboard presses/releases and
+maps the TH08 movement, shot, bomb, confirm, Escape, Control, and Shift keys to
+the DirectInput scan codes. There are no touch controls. The C ABI in
+`TH08IOSKeyboard.h` exposes the 256-byte key state for the future engine
+adapter.
 
 ## Build
 
-On a macOS machine with Xcode and XcodeGen installed:
+On macOS with Xcode and XcodeGen installed:
 
 ```sh
 cd ios/BringUp
@@ -40,14 +46,14 @@ unsigned Simulator build on a macOS runner.
 1. Introduce an iOS application entry point and lifecycle-aware frame loop.
 2. Replace the Win32 window/message-pump boundary without changing reconstructed
    game logic or its exactness evidence.
-3. Port the Direct3D 8 device/resource/state behavior to a supported iOS graphics
-   API and validate it against the existing renderer captures.
-4. Route physical Bluetooth keyboard events into the game's DirectInput-compatible
-   input state. No touch controls are planned.
+3. Port Direct3D 8 device/resource/state behavior to a supported iOS graphics
+   API and validate it against existing renderer captures.
+4. Connect the keyboard-state ABI to the game's input polling and clear held
+   keys on app deactivation.
 5. Port audio, timing, save/config paths, focus handling, and archive loading.
 6. Run the original game with user-imported archives on a physical iPhone and
    verify gameplay, audio, suspend/resume, and frame pacing.
 
-Do not add a nominal Apple CMake target that links stubs in place of these
-platform services. Keep the original Windows/Linux targets and reconstruction
-sources unchanged while the iOS boundary is developed.
+Do not add a nominal Apple CMake target that links stubs in place of platform
+services. Keep the original Windows/Linux targets and reconstruction sources
+unchanged while the iOS boundary is developed.

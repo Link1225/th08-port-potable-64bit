@@ -13,7 +13,7 @@ struct BringUpView: View {
                 Text("Touhou 8 — Imperishable Night")
                     .font(.title2.weight(.semibold))
 
-                Text("This app currently prepares your game data. It does not yet run the game engine.")
+                Text("This app currently prepares your game data. The original game engine is not connected yet.")
                     .foregroundColor(.secondary)
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -48,6 +48,7 @@ struct BringUpView: View {
                 Spacer()
             }
             .padding()
+            .background(KeyboardCaptureView())
             .navigationTitle("TH08 iOS")
             .fileImporter(
                 isPresented: $isImporterPresented,
