@@ -40,8 +40,9 @@ xcodebuild -project TH08BringUp.xcodeproj \
   -configuration Debug CODE_SIGNING_ALLOWED=NO build
 ```
 
-The GitHub Actions workflow `.github/workflows/ios-bringup.yml` performs this
-unsigned Simulator build on a macOS runner.
+The GitHub Actions workflow `.github/workflows/ios-bringup.yml` performs an
+unsigned Simulator build and an unsigned generic iOS device build on a macOS
+runner. An unsigned build is not an installable, signed IPA.
 
 ## Remaining engine integration
 
