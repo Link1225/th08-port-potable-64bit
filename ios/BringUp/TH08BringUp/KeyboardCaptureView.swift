@@ -48,26 +48,42 @@ final class KeyboardCaptureUIView: UIView {
     private func update(_ presses: Set<UIPress>, isDown: Bool) {
         for press in presses {
             guard let key = press.key,
-                  let scanCode = Self.directInputScanCode(for: key.keyCode) else {
+                  let scanCode = Self.virtualKeyCode(for: key.keyCode) else {
                 continue
             }
             TH08IOSSetKeyState(scanCode, isDown ? 1 : 0)
         }
     }
 
-    // USB HID keyboard usages mapped to the DirectInput scan codes used by TH08.
-    private static func directInputScanCode(for usage: UIKeyboardHIDUsage) -> UInt8? {
+    // UIKit reports USB HID usages. Convert them to Win32 virtual-key indices,
+    // which are the indices consumed by Controller::GetInput's GetKeyboardState
+    // path when the game has no DirectInput keyboard device.
+    private static func virtualKeyCode(for usage: UIKeyboardHIDUsage) -> UInt8? {
         switch usage.rawValue {
-        case 0x1D: return 0x2C // Z
-        case 0x1B: return 0x2D // X
-        case 0x28: return 0x1C // Return
-        case 0x29: return 0x01 // Escape
-        case 0x50: return 0xCB // Left
-        case 0x4F: return 0xCD // Right
-        case 0x52: return 0xC8 // Up
-        case 0x51: return 0xD0 // Down
-        case 0xE0: return 0x1D // Left Control
-        case 0xE1: return 0x2A // Left Shift
+        case 0x1D: return 0x5A // Z -> VK_Z
+        case 0x1B: return 0x58 // X -> VK_X
+        case 0x28: return 0x0D // Return -> VK_RETURN
+        case 0x29: return 0x1B // Escape -> VK_ESCAPE
+        case 0x50: return 0x25 // Left -> VK_LEFT
+        case 0x4F: return 0x27 // Right -> VK_RIGHT
+        case 0x52: return 0x26 // Up -> VK_UP
+        case 0x51: return 0x28 // Down -> VK_DOWN
+        case 0xE0: return 0x11 // Left Control -> VK_CONTROL
+        case 0xE1: return 0x10 // Left Shift -> VK_SHIFT
+        case 0x13: return 0x50 // P -> VK_P
+        case 0x07: return 0x44 // D -> VK_D
+        case 0x14: return 0x51 // Q -> VK_Q
+        case 0x16: return 0x53 // S -> VK_S
+        case 0x15: return 0x52 // R -> VK_R
+        case 0x4A: return 0x24 // Home -> VK_HOME
+        case 0x59: return 0x61 // Keypad 1 -> VK_NUMPAD1
+        case 0x5A: return 0x62 // Keypad 2 -> VK_NUMPAD2
+        case 0x5B: return 0x63 // Keypad 3 -> VK_NUMPAD3
+        case 0x5C: return 0x64 // Keypad 4 -> VK_NUMPAD4
+        case 0x5E: return 0x66 // Keypad 6 -> VK_NUMPAD6
+        case 0x5F: return 0x67 // Keypad 7 -> VK_NUMPAD7
+        case 0x60: return 0x68 // Keypad 8 -> VK_NUMPAD8
+        case 0x61: return 0x69 // Keypad 9 -> VK_NUMPAD9
         default: return nil
         }
     }
