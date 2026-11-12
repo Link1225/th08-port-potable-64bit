@@ -1,5 +1,9 @@
 name: iOS bring-up
 
+concurrency:
+  group: ios-bring-up-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
