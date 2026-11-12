@@ -14,6 +14,31 @@ enum PBGArchiveImportTests {
         )
         precondition(decoded == table, "LZSS literal round-trip failed")
 
+        let archive = makeRetailPBGArchive()
+        let archiveURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("th08-pbg-test-\\(UUID().uuidString).dat")
+        try Data(archive).write(to: archiveURL)
+        defer { try? FileManager.default.removeItem(at: archiveURL) }
+        try TH08DataArchiveImport.validatePBGArchive(
+            at: archiveURL,
+            fileSize: Int64(archive.count),
+            name: "synthetic-th08.dat"
+        )
+
+        var damagedArchive = archive
+        damagedArchive[0] ^= 0xff
+        let damagedURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("th08-pbg-damaged-\\(UUID().uuidString).dat")
+        try Data(damagedArchive).write(to: damagedURL)
+        defer { try? FileManager.default.removeItem(at: damagedURL) }
+        expectFailure("invalid retail PBG signature") {
+            try TH08DataArchiveImport.validatePBGArchive(
+                at: damagedURL,
+                fileSize: Int64(damagedArchive.count),
+                name: "damaged.dat"
+            )
+        }
+
         let repeatedBytes = try TH08DataArchiveImport.decodeLZSS(
             Data(encodeBackReferenceLZSS()),
             expectedSize: 4
@@ -56,6 +81,43 @@ enum PBGArchiveImportTests {
             )
         }
         print("PBG archive import tests passed")
+    }
+
+    private static func makeRetailPBGArchive() -> [UInt8] {
+        let entries: [(String, UInt32, UInt32, UInt32)] = [
+            ("a.bin", 16, 4, 0),
+            ("b.bin", 32, 4, 0),
+            ("c.bin", 48, 4, 0),
+            ("d.bin", 64, 4, 0)
+        ]
+        let table = makeTable(entries)
+        let compressedTable = encodeLiteralLZSS(table)
+        let tableOffset: UInt32 = 128
+        let encryptedTable = TH08DataArchiveImport.encryptPBGBytes(
+            compressedTable,
+            xorValue: 0x3e,
+            xorIncrement: 0x9b,
+            chunkSize: 0x80,
+            maximumBytes: 0x400
+        )
+
+        var header = [UInt8]()
+        appendUInt32LE(UInt32(entries.count) + 123_456, to: &header)
+        appendUInt32LE(tableOffset + 345_678, to: &header)
+        appendUInt32LE(UInt32(table.count) + 567_891, to: &header)
+        let encryptedHeader = TH08DataArchiveImport.encryptPBGBytes(
+            header,
+            xorValue: 0x1b,
+            xorIncrement: 0x37,
+            chunkSize: 12,
+            maximumBytes: 0x400
+        )
+
+        var archive = Array("PBGZ".utf8)
+        archive.append(contentsOf: encryptedHeader)
+        archive.append(contentsOf: repeatElement(0, count: Int(tableOffset) - archive.count))
+        archive.append(contentsOf: encryptedTable)
+        return archive
     }
 
     private static func makeTable(_ entries: [(String, UInt32, UInt32, UInt32)]) -> [UInt8] {
