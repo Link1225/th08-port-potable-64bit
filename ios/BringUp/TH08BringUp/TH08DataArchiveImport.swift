@@ -223,7 +223,7 @@ enum TH08DataArchiveImport {
     /// Decodes the retail LZSS bitstream. Bits are consumed most-significant
     /// first; a zero offset terminates the stream. Output and back-references
     /// are bounded so malformed archives cannot cause unbounded allocation.
-    private static func decodeLZSS(_ input: Data, expectedSize: Int) throws -> [UInt8] {
+    static func decodeLZSS(_ input: Data, expectedSize: Int) throws -> [UInt8] {
         let dictionarySize = 1 << 13
         guard expectedSize > 0,
               expectedSize <= Int(maximumFileTableSize),
@@ -300,7 +300,7 @@ enum TH08DataArchiveImport {
     /// Parses NUL-terminated names followed by three little-endian DWORDs.
     /// Every payload offset must remain inside the archive's data region and
     /// offsets must be monotonic, matching the sentinel-based retail layout.
-    private static func validateFileTable(
+    static func validateFileTable(
         _ table: [UInt8],
         entryCount: Int,
         dataStart: Int64,
