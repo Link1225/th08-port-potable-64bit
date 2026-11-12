@@ -13,6 +13,8 @@ on:
       - "ios/BringUp/**"
       - "ios/Tests/**"
       - "ios/README.md"
+      - "src/Global.cpp"
+      - "src/Supervisor.cpp"
       - ".github/workflows/ios-bringup.yml"
 
 jobs:
