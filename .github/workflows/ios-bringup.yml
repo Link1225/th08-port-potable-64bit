@@ -12,9 +12,19 @@ on:
     paths:
       - "ios/BringUp/**"
       - "ios/Tests/**"
+      - "ios/README.md"
       - ".github/workflows/ios-bringup.yml"
 
 jobs:
+  pbg-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test PBG archive parser
+        run: |
+          swiftc ios/BringUp/TH08BringUp/TH08DataArchiveImport.swift ios/Tests/PBGArchiveImportTests.swift -o /tmp/th08-pbg-import-tests
+          /tmp/th08-pbg-import-tests
+
   simulator-build:
     runs-on: macos-15
     steps:
@@ -23,10 +33,6 @@ jobs:
         run: |
           clang++ -std=c++17 -x objective-c++ ios/BringUp/TH08BringUp/TH08IOSKeyboard.mm ios/Tests/KeyboardBridgeTests.cpp -o /tmp/th08-ios-keyboard-tests
           /tmp/th08-ios-keyboard-tests
-      - name: Test PBG archive parser
-        run: |
-          swiftc ios/BringUp/TH08BringUp/TH08DataArchiveImport.swift ios/Tests/PBGArchiveImportTests.swift -o /tmp/th08-pbg-import-tests
-          /tmp/th08-pbg-import-tests
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
