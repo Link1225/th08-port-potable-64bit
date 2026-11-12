@@ -36,6 +36,37 @@ enum TH08DataArchiveImport {
         }
     }
 
+    /// Returns the previously imported pair only when both retail archives
+    /// still pass the same bounded validation used during import.
+    static func existingDirectory() -> URL? {
+        let fileManager = FileManager.default
+        guard let support = try? fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return nil
+        }
+
+        let directory = support.appendingPathComponent("TH08Data", isDirectory: true)
+        for name in requiredNames {
+            let archive = directory.appendingPathComponent(name)
+            guard fileManager.isReadableFile(atPath: archive.path),
+                  let values = try? archive.resourceValues(forKeys: [.fileSizeKey]),
+                  let size = values.fileSize,
+                  size > 0 else {
+                return nil
+            }
+            do {
+                try validatePBGArchive(at: archive, fileSize: Int64(size), name: name)
+            } catch {
+                return nil
+            }
+        }
+        return directory
+    }
+
     /// Imports the user's original archives as one directory-level transaction.
     /// Existing archives remain in place unless both files are staged.
     static func installPair(from urls: [URL]) throws -> URL {
