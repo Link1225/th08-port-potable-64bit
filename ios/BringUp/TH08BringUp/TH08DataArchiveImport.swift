@@ -83,12 +83,14 @@ enum TH08DataArchiveImport {
                 throw ImportError.missingFiles
             }
 
+            #if os(iOS) || os(macOS)
             let didStartAccess = source.startAccessingSecurityScopedResource()
             defer {
                 if didStartAccess {
                     source.stopAccessingSecurityScopedResource()
                 }
             }
+            #endif
 
             guard fileManager.isReadableFile(atPath: source.path) else {
                 throw ImportError.cannotAccessFile(name)
