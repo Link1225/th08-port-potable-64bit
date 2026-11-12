@@ -33,6 +33,34 @@ enum PBGArchiveImportTests {
             "PBG header decryption vector failed"
         )
 
+        // Exercise odd/even tails, partial chunks, and the retail 0x400-byte
+        // decryption limit using deterministic payloads of varied lengths.
+        for chunkSize in [12, 0x80] {
+            for count in [1, 2, 3, 11, 12, 13, 24, 25, 127, 128, 129, 255, 256, 257, 1023, 1024, 1025, 2049] {
+                let source = (0..<count).map {
+                    UInt8(truncatingIfNeeded: $0 &* 37 &+ count &* 11)
+                }
+                let encrypted = TH08DataArchiveImport.encryptPBGBytes(
+                    source,
+                    xorValue: 0x3e,
+                    xorIncrement: 0x9b,
+                    chunkSize: chunkSize,
+                    maximumBytes: 0x400
+                )
+                let decrypted = TH08DataArchiveImport.decryptPBGBytes(
+                    encrypted,
+                    xorValue: 0x3e,
+                    xorIncrement: 0x9b,
+                    chunkSize: chunkSize,
+                    maximumBytes: 0x400
+                )
+                precondition(
+                    decrypted == source,
+                    "PBG rolling XOR round-trip failed for size \\(count), chunk \\(chunkSize)"
+                )
+            }
+        }
+
         let archive = makeRetailPBGArchive()
         let archiveURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("th08-pbg-test-\(UUID().uuidString).dat")
