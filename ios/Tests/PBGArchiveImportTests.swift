@@ -99,7 +99,7 @@ enum PBGArchiveImportTests {
         }
 
         writeBit(1)
-        writeBits(Int(UInt8(ascii: "A")), count: 8)
+        writeBits(0x41, count: 8)
         writeBit(0)
         writeBits(1, count: 13)
         writeBits(0, count: 4)
