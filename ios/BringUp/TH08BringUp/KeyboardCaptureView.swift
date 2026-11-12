@@ -68,8 +68,8 @@ final class KeyboardCaptureUIView: UIView {
         case 0x4F: return 0x27 // Right -> VK_RIGHT
         case 0x52: return 0x26 // Up -> VK_UP
         case 0x51: return 0x28 // Down -> VK_DOWN
-        case 0xE0: return 0x11 // Left Control -> VK_CONTROL
-        case 0xE1: return 0x10 // Left Shift -> VK_SHIFT
+        case 0xE0, 0xE4: return 0x11 // Left/right Control -> VK_CONTROL
+        case 0xE1, 0xE5: return 0x10 // Left/right Shift -> VK_SHIFT
         case 0x13: return 0x50 // P -> VK_P
         case 0x07: return 0x44 // D -> VK_D
         case 0x14: return 0x51 // Q -> VK_Q
