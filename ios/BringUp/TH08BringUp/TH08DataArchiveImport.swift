@@ -281,13 +281,17 @@ enum TH08DataArchiveImport {
         var currentByte: UInt8 = 0
         var dictionaryHead = 1
 
-        func readBit() throws -> UInt32 {
+        // Match the retail modern-port decoder: reads beyond the compressed
+        // buffer supply zero bits. The retail encoder does not flush its final
+        // partial byte, so the zero-offset terminator can be completed at EOF.
+        func readBit() -> UInt32 {
             if bitMask == 0x80 {
-                guard inputIndex < source.count else {
-                    throw ImportError.invalidArchive("truncated LZSS stream")
+                if inputIndex < source.count {
+                    currentByte = source[inputIndex]
+                    inputIndex += 1
+                } else {
+                    currentByte = 0
                 }
-                currentByte = source[inputIndex]
-                inputIndex += 1
             }
             let bit: UInt32 = (currentByte & bitMask) == 0 ? 0 : 1
             bitMask >>= 1
@@ -295,31 +299,31 @@ enum TH08DataArchiveImport {
             return bit
         }
 
-        func readBits(_ count: Int) throws -> Int {
+        func readBits(_ count: Int) -> Int {
             var value = 0
             for _ in 0..<count {
-                value = (value << 1) | Int(try readBit())
+                value = (value << 1) | Int(readBit())
             }
             return value
         }
 
         var terminated = false
         while true {
-            if try readBit() != 0 {
+            if readBit() != 0 {
                 guard output.count < expectedSize else {
                     throw ImportError.invalidArchive("LZSS output exceeds declared size")
                 }
-                let literal = UInt8(try readBits(8))
+                let literal = UInt8(readBits(8))
                 output.append(literal)
                 dictionary[dictionaryHead] = literal
                 dictionaryHead = (dictionaryHead + 1) & (dictionarySize - 1)
             } else {
-                let offset = try readBits(13)
+                let offset = readBits(13)
                 if offset == 0 {
                     terminated = true
                     break
                 }
-                let length = try readBits(4) + 3
+                let length = readBits(4) + 3
                 guard output.count + length <= expectedSize else {
                     throw ImportError.invalidArchive("LZSS output exceeds declared size")
                 }
