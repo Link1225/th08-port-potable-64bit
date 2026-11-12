@@ -8,6 +8,7 @@ enum TH08DataArchiveImport {
     private static let pbgHeaderSize = 12
     private static let maximumEntryCount: Int64 = 100_000
     private static let maximumFileTableSize: Int64 = 128 * 1024 * 1024
+    private static let maximumCompressedFileTableSize: Int64 = 160 * 1024 * 1024
 
     enum ImportError: LocalizedError {
         case missingFiles
@@ -181,8 +182,9 @@ enum TH08DataArchiveImport {
               entryCount <= maximumEntryCount,
               tableOffset >= Int64(archiveMagic.count + pbgHeaderSize),
               tableOffset < fileSize,
-              tableSize > 0,
-              tableSize <= maximumFileTableSize else {
+              tableSize >= entryCount * 14,
+              tableSize <= maximumFileTableSize,
+              fileSize - tableOffset <= maximumCompressedFileTableSize else {
             throw ImportError.invalidArchive(name)
         }
 
@@ -328,7 +330,7 @@ enum TH08DataArchiveImport {
             let offset = Int64(rawOffset)
             let decompressedSize = Int64(rawSize)
             guard offset >= previousOffset,
-                  offset <= tableOffset,
+                  offset < tableOffset,
                   offset < fileSize,
                   decompressedSize <= maximumFileTableSize else {
                 throw ImportError.invalidArchive("file-table entry is out of bounds")
