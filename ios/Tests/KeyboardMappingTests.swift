@@ -13,9 +13,9 @@ let expected: [(UInt16, UInt8)] = [
 for (usage, virtualKey) in expected {
     precondition(
         TH08IOSKeyboardKeyMapping.virtualKeyCode(forHIDUsage: usage) == virtualKey,
-        "Unexpected virtual-key mapping for HID usage 0x\\(String(usage, radix: 16))"
+        "Unexpected virtual-key mapping for HID usage 0x\(String(usage, radix: 16))"
     )
 }
 precondition(TH08IOSKeyboardKeyMapping.virtualKeyCode(forHIDUsage: 0x00) == nil)
 precondition(TH08IOSKeyboardKeyMapping.virtualKeyCode(forHIDUsage: 0xE2) == nil)
-print("iOS physical keyboard mapping tests passed (\\(expected.count) mappings)")
+print("iOS physical keyboard mapping tests passed (\(expected.count) mappings)")
