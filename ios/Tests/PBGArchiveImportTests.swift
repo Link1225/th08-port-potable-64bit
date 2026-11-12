@@ -25,6 +25,18 @@ enum PBGArchiveImportTests {
             name: "synthetic-th08.dat"
         )
 
+        let pairDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("th08-pbg-pair-\\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: pairDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: pairDirectory) }
+        try Data(archive).write(to: pairDirectory.appendingPathComponent("th08.dat"))
+        try Data(archive).write(to: pairDirectory.appendingPathComponent("thbgm.dat"))
+        try TH08DataArchiveImport.validatePair(at: pairDirectory)
+        try FileManager.default.removeItem(at: pairDirectory.appendingPathComponent("thbgm.dat"))
+        expectFailure("incomplete installed archive pair") {
+            try TH08DataArchiveImport.validatePair(at: pairDirectory)
+        }
+
         var damagedArchive = archive
         damagedArchive[0] ^= 0xff
         let damagedURL = FileManager.default.temporaryDirectory
