@@ -186,6 +186,158 @@ enum TH08DataArchiveImport {
               tableSize <= maximumFileTableSize else {
             throw ImportError.invalidArchive(name)
         }
+
+        // Validate the complete encrypted/compressed file table before installing
+        // the pair. The decoder is a bounded Swift port of the retail LZSS reader.
+        do {
+            try handle.seek(toOffset: UInt64(tableOffset))
+            let compressedTable = try handle.readToEnd() ?? Data()
+            guard !compressedTable.isEmpty else {
+                throw ImportError.invalidArchive(name)
+            }
+            let decryptedTable = Data(decryptPBGBytes(
+                Array(compressedTable),
+                xorValue: 0x3e,
+                xorIncrement: 0x9b,
+                chunkSize: 0x80,
+                maximumBytes: 0x400
+            ))
+            let decodedTable = try decodeLZSS(
+                decryptedTable,
+                expectedSize: Int(tableSize)
+            )
+            try validateFileTable(
+                decodedTable,
+                entryCount: Int(entryCount),
+                dataStart: Int64(archiveMagic.count + pbgHeaderSize),
+                tableOffset: tableOffset,
+                fileSize: fileSize
+            )
+        } catch let error as ImportError {
+            throw error
+        } catch {
+            throw ImportError.invalidArchive(name)
+        }
+    }
+
+    /// Decodes the retail LZSS bitstream. Bits are consumed most-significant
+    /// first; a zero offset terminates the stream. Output and back-references
+    /// are bounded so malformed archives cannot cause unbounded allocation.
+    private static func decodeLZSS(_ input: Data, expectedSize: Int) throws -> [UInt8] {
+        let dictionarySize = 1 << 13
+        guard expectedSize > 0,
+              expectedSize <= Int(maximumFileTableSize),
+              !input.isEmpty else {
+            throw ImportError.invalidArchive("file table")
+        }
+
+        let source = Array(input)
+        var dictionary = [UInt8](repeating: 0, count: dictionarySize)
+        var output = [UInt8]()
+        output.reserveCapacity(expectedSize)
+        var inputIndex = 0
+        var bitMask: UInt8 = 0x80
+        var currentByte: UInt8 = 0
+        var dictionaryHead = 1
+
+        func readBit() throws -> UInt32 {
+            if bitMask == 0x80 {
+                guard inputIndex < source.count else {
+                    throw ImportError.invalidArchive("truncated LZSS stream")
+                }
+                currentByte = source[inputIndex]
+                inputIndex += 1
+            }
+            let bit: UInt32 = (currentByte & bitMask) == 0 ? 0 : 1
+            bitMask >>= 1
+            if bitMask == 0 { bitMask = 0x80 }
+            return bit
+        }
+
+        func readBits(_ count: Int) throws -> Int {
+            var value = 0
+            for _ in 0..<count {
+                value = (value << 1) | Int(try readBit())
+            }
+            return value
+        }
+
+        var terminated = false
+        while output.count < expectedSize {
+            if try readBit() != 0 {
+                let literal = UInt8(try readBits(8))
+                output.append(literal)
+                dictionary[dictionaryHead] = literal
+                dictionaryHead = (dictionaryHead + 1) & (dictionarySize - 1)
+            } else {
+                let offset = try readBits(13)
+                if offset == 0 {
+                    terminated = true
+                    break
+                }
+                let length = try readBits(4) + 3
+                guard output.count + length <= expectedSize else {
+                    throw ImportError.invalidArchive("LZSS output exceeds declared size")
+                }
+                for index in 0..<length {
+                    let value = dictionary[(offset + index) & (dictionarySize - 1)]
+                    output.append(value)
+                    dictionary[dictionaryHead] = value
+                    dictionaryHead = (dictionaryHead + 1) & (dictionarySize - 1)
+                }
+            }
+        }
+
+        guard terminated, output.count == expectedSize else {
+            throw ImportError.invalidArchive("incomplete LZSS file table")
+        }
+        return output
+    }
+
+    /// Parses NUL-terminated names followed by three little-endian DWORDs.
+    /// Every payload offset must remain inside the archive's data region and
+    /// offsets must be monotonic, matching the sentinel-based retail layout.
+    private static func validateFileTable(
+        _ table: [UInt8],
+        entryCount: Int,
+        dataStart: Int64,
+        tableOffset: Int64,
+        fileSize: Int64
+    ) throws {
+        var cursor = 0
+        var previousOffset = dataStart
+
+        for _ in 0..<entryCount {
+            guard cursor < table.count,
+                  let terminator = table[cursor...].firstIndex(of: 0),
+                  terminator > cursor else {
+                throw ImportError.invalidArchive("invalid file-table name")
+            }
+            cursor = terminator + 1
+            guard cursor <= table.count - 12 else {
+                throw ImportError.invalidArchive("truncated file-table entry")
+            }
+
+            guard let rawOffset = readUInt32LE(table, at: cursor),
+                  let rawSize = readUInt32LE(table, at: cursor + 4),
+                  readUInt32LE(table, at: cursor + 8) != nil else {
+                throw ImportError.invalidArchive("invalid file-table entry")
+            }
+            let offset = Int64(rawOffset)
+            let decompressedSize = Int64(rawSize)
+            guard offset >= previousOffset,
+                  offset <= tableOffset,
+                  offset < fileSize,
+                  decompressedSize <= maximumFileTableSize else {
+                throw ImportError.invalidArchive("file-table entry is out of bounds")
+            }
+            previousOffset = offset
+            cursor += 12
+        }
+
+        guard cursor == table.count else {
+            throw ImportError.invalidArchive("unexpected trailing file-table data")
+        }
     }
 
     /// Port of FileSystem::Decrypt's byte ordering and rolling XOR transform.
