@@ -14,6 +14,12 @@ enum PBGArchiveImportTests {
         )
         precondition(decoded == table, "LZSS literal round-trip failed")
 
+        let repeatedBytes = try TH08DataArchiveImport.decodeLZSS(
+            Data(encodeBackReferenceLZSS()),
+            expectedSize: 4
+        )
+        precondition(repeatedBytes == Array("AAAA".utf8), "LZSS back-reference decoding failed")
+
         try TH08DataArchiveImport.validateFileTable(
             decoded,
             entryCount: 2,
@@ -69,6 +75,38 @@ enum PBGArchiveImportTests {
         bytes.append(UInt8((value >> 8) & 0xff))
         bytes.append(UInt8((value >> 16) & 0xff))
         bytes.append(UInt8((value >> 24) & 0xff))
+    }
+
+    private static func encodeBackReferenceLZSS() -> [UInt8] {
+        var output = [UInt8]()
+        var current: UInt8 = 0
+        var mask: UInt8 = 0x80
+
+        func writeBit(_ bit: UInt8) {
+            if bit != 0 { current |= mask }
+            mask >>= 1
+            if mask == 0 {
+                output.append(current)
+                current = 0
+                mask = 0x80
+            }
+        }
+
+        func writeBits(_ value: Int, count: Int) {
+            for shift in stride(from: count - 1, through: 0, by: -1) {
+                writeBit(UInt8((value >> shift) & 1))
+            }
+        }
+
+        writeBit(1)
+        writeBits(Int(UInt8(ascii: "A")), count: 8)
+        writeBit(0)
+        writeBits(1, count: 13)
+        writeBits(0, count: 4)
+        writeBit(0)
+        writeBits(0, count: 13)
+        if mask != 0x80 { output.append(current) }
+        return output
     }
 
     private static func encodeLiteralLZSS(_ bytes: [UInt8]) -> [UInt8] {
