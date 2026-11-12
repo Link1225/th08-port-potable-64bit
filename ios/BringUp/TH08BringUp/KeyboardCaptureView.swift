@@ -78,8 +78,8 @@ final class KeyboardCaptureUIView: UIView {
     }
 
     override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        update(presses, isDown: false)
         super.pressesCancelled(presses, with: event)
-        clearKeyboardState()
     }
 
     @objc private func applicationWillResignActive() {
