@@ -814,6 +814,11 @@ u16 Controller::GetInput(void)
 
 void Controller::ResetKeyboard(void)
 {
+#ifdef TH08_MODERN_IOS
+    // UIKit owns the keyboard state on iOS; Win32 keyboard APIs are not
+    // available there. Clear the shared bridge before the first game frame.
+    TH08IOSClearKeyboardState();
+#else
     u8 key_states[256];
 
     GetKeyboardState(key_states);
@@ -822,6 +827,7 @@ void Controller::ResetKeyboard(void)
         *(key_states + idx) &= 0x7f;
     }
     SetKeyboardState(key_states);
+#endif
 }
 
 #pragma var_order(inCursor, outCursorBackup, i, out, outCursor, numUnencrypted, unused)
