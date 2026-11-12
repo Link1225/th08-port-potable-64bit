@@ -28,6 +28,12 @@ final class KeyboardCaptureUIView: UIView {
             name: UIApplication.willResignActiveNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -36,6 +42,12 @@ final class KeyboardCaptureUIView: UIView {
             self,
             selector: #selector(applicationWillResignActive),
             name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
     }
@@ -72,6 +84,12 @@ final class KeyboardCaptureUIView: UIView {
 
     @objc private func applicationWillResignActive() {
         clearKeyboardState()
+    }
+
+    @objc private func applicationDidBecomeActive() {
+        if window != nil {
+            becomeFirstResponder()
+        }
     }
 
     private func clearKeyboardState() {
