@@ -36,17 +36,19 @@ enum PBGArchiveImportTests {
             )
         }
 
-        var descendingOffsets = makeTable([
+        let descendingOffsets = makeTable([
             ("a.bin", 32, 4, 0),
             ("b.bin", 16, 8, 0)
         ])
-        try TH08DataArchiveImport.validateFileTable(
-            makeBytes(descendingOffsets),
-            entryCount: 2,
-            dataStart: 16,
-            tableOffset: 96,
-            fileSize: 128
-        )
+        expectFailure("descending payload offsets") {
+            try TH08DataArchiveImport.validateFileTable(
+                descendingOffsets,
+                entryCount: 2,
+                dataStart: 16,
+                tableOffset: 96,
+                fileSize: 128
+            )
+        }
         print("PBG archive import tests passed")
     }
 
@@ -67,10 +69,6 @@ enum PBGArchiveImportTests {
         bytes.append(UInt8((value >> 8) & 0xff))
         bytes.append(UInt8((value >> 16) & 0xff))
         bytes.append(UInt8((value >> 24) & 0xff))
-    }
-
-    private static func makeBytes(_ bytes: [UInt8]) -> [UInt8] {
-        bytes
     }
 
     private static func encodeLiteralLZSS(_ bytes: [UInt8]) -> [UInt8] {
