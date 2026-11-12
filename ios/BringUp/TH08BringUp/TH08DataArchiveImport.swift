@@ -159,7 +159,7 @@ enum TH08DataArchiveImport {
         }
 
         let encryptedHeader = Array(prefix.dropFirst(archiveMagic.count))
-        let header = encryptPBGBytes(
+        let header = decryptPBGBytes(
             encryptedHeader,
             xorValue: 0x1b,
             xorIncrement: 0x37,
@@ -343,6 +343,60 @@ enum TH08DataArchiveImport {
     }
 
     /// Port of FileSystem::Decrypt's byte ordering and rolling XOR transform.
+    static func decryptPBGBytes(
+        _ input: [UInt8],
+        xorValue: UInt8,
+        xorIncrement: UInt8,
+        chunkSize: Int,
+        maximumBytes: Int
+    ) -> [UInt8] {
+        guard !input.isEmpty, chunkSize > 0 else { return input }
+
+        var output = [UInt8](repeating: 0, count: input.count)
+        var inputIndex = 0
+        var outputIndex = 0
+        var remaining = input.count
+        var key = xorValue
+        var bytesLeftToDecrypt = maximumBytes
+
+        var unencryptedCount = remaining % chunkSize < chunkSize / 4
+            ? remaining % chunkSize
+            : 0
+        unencryptedCount += remaining & 1
+        remaining -= unencryptedCount
+
+        while remaining > 0 && bytesLeftToDecrypt > 0 {
+            let currentChunkSize = min(chunkSize, remaining)
+            let firstPassCount = (currentChunkSize + 1) / 2
+            for index in 0..<firstPassCount {
+                output[outputIndex + currentChunkSize - 1 - index * 2] = input[inputIndex] ^ key
+                inputIndex += 1
+                key &+= xorIncrement
+            }
+
+            let secondPassCount = currentChunkSize / 2
+            if secondPassCount > 0 {
+                for index in 0..<secondPassCount {
+                    output[outputIndex + currentChunkSize - 2 - index * 2] = input[inputIndex] ^ key
+                    inputIndex += 1
+                    key &+= xorIncrement
+                }
+            }
+
+            remaining -= currentChunkSize
+            outputIndex += currentChunkSize
+            bytesLeftToDecrypt -= currentChunkSize
+        }
+
+        let trailingCount = remaining + unencryptedCount
+        if trailingCount > 0 {
+            for index in 0..<trailingCount {
+                output[outputIndex + index] = input[inputIndex + index]
+            }
+        }
+        return output
+    }
+
     static func encryptPBGBytes(
         _ input: [UInt8],
         xorValue: UInt8,
