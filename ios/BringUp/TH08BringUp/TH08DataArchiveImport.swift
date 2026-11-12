@@ -50,21 +50,28 @@ enum TH08DataArchiveImport {
         }
 
         let directory = support.appendingPathComponent("TH08Data", isDirectory: true)
+        do {
+            try validatePair(at: directory)
+            return directory
+        } catch {
+            return nil
+        }
+    }
+
+    /// Validates an already-installed pair without relying on security-scoped
+    /// access; the directory must be inside the app's sandbox.
+    static func validatePair(at directory: URL) throws {
+        let fileManager = FileManager.default
         for name in requiredNames {
             let archive = directory.appendingPathComponent(name)
             guard fileManager.isReadableFile(atPath: archive.path),
                   let values = try? archive.resourceValues(forKeys: [.fileSizeKey]),
                   let size = values.fileSize,
                   size > 0 else {
-                return nil
+                throw ImportError.invalidArchive(name)
             }
-            do {
-                try validatePBGArchive(at: archive, fileSize: Int64(size), name: name)
-            } catch {
-                return nil
-            }
+            try validatePBGArchive(at: archive, fileSize: Int64(size), name: name)
         }
-        return directory
     }
 
     /// Imports the user's original archives as one directory-level transaction.
