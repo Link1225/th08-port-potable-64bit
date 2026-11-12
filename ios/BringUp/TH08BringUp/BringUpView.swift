@@ -62,6 +62,15 @@ struct BringUpView: View {
                     TH08IOSClearKeyboardState()
                 }
             }
+            .task {
+                let existingDirectory = await Task.detached(priority: .utility) {
+                    TH08DataArchiveImport.existingDirectory()
+                }.value
+                if let directory = existingDirectory {
+                    importedDirectory = directory
+                    status = "Both original archives are present and passed validation."
+                }
+            }
         }
     }
 
