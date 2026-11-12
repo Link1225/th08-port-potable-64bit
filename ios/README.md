@@ -4,8 +4,8 @@ This directory contains the native iOS host application and the platform
 adapters being developed for the original TH08 engine.
 
 The current checkpoint provides a native bring-up shell, paired import of the
-user's original archives, and a physical-keyboard state buffer indexed by
-Win32 virtual-key codes. Import checks the retail PBG signature, decrypts and
+user's original archives with full file-table structural validation, and a
+physical-keyboard state buffer indexed by Win32 virtual-key codes. Import checks the retail PBG signature, decrypts and
 decodes the fixed-size header, and validates the entry count, file-table offset,
 and declared decompressed table size before replacing the stored pair. It does
 not yet decompress the file table or validate individual archive entries. The
