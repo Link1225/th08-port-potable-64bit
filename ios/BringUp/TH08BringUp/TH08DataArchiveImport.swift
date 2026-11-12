@@ -133,7 +133,7 @@ enum TH08DataArchiveImport {
     /// Validates the retail PBG signature, encrypted header, compressed file
     /// table, and entry boundaries before the pair is installed. Asset payloads
     /// remain compressed and are decoded by the game engine at load time.
-    private static func validatePBGArchive(at url: URL, fileSize: Int64, name: String) throws {
+    static func validatePBGArchive(at url: URL, fileSize: Int64, name: String) throws {
         guard fileSize >= Int64(archiveMagic.count + pbgHeaderSize) else {
             throw ImportError.invalidArchive(name)
         }
@@ -159,7 +159,7 @@ enum TH08DataArchiveImport {
         }
 
         let encryptedHeader = Array(prefix.dropFirst(archiveMagic.count))
-        let header = decryptPBGBytes(
+        let header = encryptPBGBytes(
             encryptedHeader,
             xorValue: 0x1b,
             xorIncrement: 0x37,
@@ -343,7 +343,7 @@ enum TH08DataArchiveImport {
     }
 
     /// Port of FileSystem::Decrypt's byte ordering and rolling XOR transform.
-    private static func decryptPBGBytes(
+    static func encryptPBGBytes(
         _ input: [UInt8],
         xorValue: UInt8,
         xorIncrement: UInt8,
@@ -357,7 +357,7 @@ enum TH08DataArchiveImport {
         var outputIndex = 0
         var remaining = input.count
         var key = xorValue
-        var bytesLeftToDecrypt = maximumBytes
+        var bytesLeftToEncrypt = maximumBytes
 
         var unencryptedCount = remaining % chunkSize < chunkSize / 4
             ? remaining % chunkSize
@@ -365,27 +365,27 @@ enum TH08DataArchiveImport {
         unencryptedCount += remaining & 1
         remaining -= unencryptedCount
 
-        while remaining > 0 && bytesLeftToDecrypt > 0 {
+        while remaining > 0 && bytesLeftToEncrypt > 0 {
             let currentChunkSize = min(chunkSize, remaining)
             let firstPassCount = (currentChunkSize + 1) / 2
             for index in 0..<firstPassCount {
-                output[outputIndex + currentChunkSize - 1 - index * 2] = input[inputIndex] ^ key
-                inputIndex += 1
+                output[outputIndex] = input[inputIndex + currentChunkSize - 1 - index * 2] ^ key
+                outputIndex += 1
                 key &+= xorIncrement
             }
 
             let secondPassCount = currentChunkSize / 2
             if secondPassCount > 0 {
                 for index in 0..<secondPassCount {
-                    output[outputIndex + currentChunkSize - 2 - index * 2] = input[inputIndex] ^ key
-                    inputIndex += 1
+                    output[outputIndex] = input[inputIndex + currentChunkSize - 2 - index * 2] ^ key
+                    outputIndex += 1
                     key &+= xorIncrement
                 }
             }
 
+            inputIndex += currentChunkSize
             remaining -= currentChunkSize
-            outputIndex += currentChunkSize
-            bytesLeftToDecrypt -= currentChunkSize
+            bytesLeftToEncrypt -= currentChunkSize
         }
 
         let trailingCount = remaining + unencryptedCount
