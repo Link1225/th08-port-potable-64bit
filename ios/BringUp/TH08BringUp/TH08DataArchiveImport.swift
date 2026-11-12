@@ -26,7 +26,7 @@ enum TH08DataArchiveImport {
             case .emptyFile(let name):
                 return "\(name) is empty."
             case .invalidArchive(let name):
-                return "\(name) does not contain a valid PBG archive header."
+                return "\(name) does not contain a valid PBG archive."
             case .cannotAccessFile(let name):
                 return "Could not access \(name)."
             case .transactionFailed(let message):
@@ -130,10 +130,9 @@ enum TH08DataArchiveImport {
         return destination
     }
 
-    /// Checks the PBG signature and decodes the three encrypted header fields.
-    /// This mirrors the retail loader's header transform and rejects impossible
-    /// table metadata before the files are installed. It does not decompress
-    /// or validate every archive entry; that remains an engine-side load check.
+    /// Validates the retail PBG signature, encrypted header, compressed file
+    /// table, and entry boundaries before the pair is installed. Asset payloads
+    /// remain compressed and are decoded by the game engine at load time.
     private static func validatePBGArchive(at url: URL, fileSize: Int64, name: String) throws {
         guard fileSize >= Int64(archiveMagic.count + pbgHeaderSize) else {
             throw ImportError.invalidArchive(name)
