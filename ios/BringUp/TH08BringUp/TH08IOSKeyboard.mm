@@ -8,10 +8,10 @@ std::array<uint8_t, 256> g_keyboardState = {};
 std::mutex g_keyboardMutex;
 }
 
-extern "C" void TH08IOSSetKeyState(uint8_t scanCode, int isDown)
+extern "C" void TH08IOSSetKeyState(uint8_t virtualKeyCode, int isDown)
 {
     std::lock_guard<std::mutex> lock(g_keyboardMutex);
-    g_keyboardState[scanCode] = isDown ? 0x80 : 0x00;
+    g_keyboardState[virtualKeyCode] = isDown ? 0x80 : 0x00;
 }
 
 extern "C" void TH08IOSClearKeyboardState(void)
