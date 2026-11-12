@@ -893,6 +893,14 @@ err:
 // FUNCTION: th08 0x446a37
 ZunResult Supervisor::SetupDInput()
 {
+#ifdef TH08_MODERN_IOS
+    // UIKit owns physical keyboard events on iOS. Leave the DirectInput
+    // device null so Controller::GetInput uses the iOS keyboard-state bridge.
+    this->keyboard = NULL;
+    this->controller = NULL;
+    this->dInputIface = NULL;
+    return ZUN_ERROR;
+#else
 #ifdef TH08_PORTABLE_NATIVE_LAYOUT
     HINSTANCE instance = this->hInstance;
 #else
@@ -969,6 +977,7 @@ ZunResult Supervisor::SetupDInput()
     }
 
     return ZUN_SUCCESS;
+#endif
 }
 
 // FUNCTION: th08 0x446cc7
