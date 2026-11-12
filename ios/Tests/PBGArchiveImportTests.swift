@@ -80,6 +80,19 @@ enum PBGArchiveImportTests {
                 fileSize: 128
             )
         }
+
+        let payloadStartsAtTable = makeTable([
+            ("a.bin", 96, 4, 0)
+        ])
+        expectFailure("payload starts inside file table") {
+            try TH08DataArchiveImport.validateFileTable(
+                payloadStartsAtTable,
+                entryCount: 1,
+                dataStart: 16,
+                tableOffset: 96,
+                fileSize: 128
+            )
+        }
         print("PBG archive import tests passed")
     }
 
