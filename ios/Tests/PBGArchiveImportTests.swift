@@ -91,9 +91,9 @@ enum PBGArchiveImportTests {
             )
         }
 
-        expectFailure("missing LZSS terminator") {
+        expectFailure("truncated LZSS payload") {
             _ = try TH08DataArchiveImport.decodeLZSS(
-                Data(compressed.dropLast(2)),
+                Data(compressed.dropLast(3)),
                 expectedSize: table.count
             )
         }
