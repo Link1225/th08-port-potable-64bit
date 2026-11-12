@@ -14,9 +14,28 @@ enum PBGArchiveImportTests {
         )
         precondition(decoded == table, "LZSS literal round-trip failed")
 
+        let retailEOFCompressed = Array(compressed.dropLast())
+        let retailEOFDecoded = try TH08DataArchiveImport.decodeLZSS(
+            Data(retailEOFCompressed),
+            expectedSize: table.count
+        )
+        precondition(retailEOFDecoded == table, "Retail LZSS zero-padding at EOF failed")
+
+        let decryptedHeaderVector = TH08DataArchiveImport.decryptPBGBytes(
+            Array(UInt8(0)...UInt8(11)),
+            xorValue: 0x1b,
+            xorIncrement: 0x37,
+            chunkSize: 12,
+            maximumBytes: 0x400
+        )
+        precondition(
+            decryptedHeaderVector == [201, 125, 129, 69, 93, 9, 21, 209, 225, 157, 169, 101],
+            "PBG header decryption vector failed"
+        )
+
         let archive = makeRetailPBGArchive()
         let archiveURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("th08-pbg-test-\\(UUID().uuidString).dat")
+            .appendingPathComponent("th08-pbg-test-\(UUID().uuidString).dat")
         try Data(archive).write(to: archiveURL)
         defer { try? FileManager.default.removeItem(at: archiveURL) }
         try TH08DataArchiveImport.validatePBGArchive(
@@ -26,7 +45,7 @@ enum PBGArchiveImportTests {
         )
 
         let pairDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("th08-pbg-pair-\\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("th08-pbg-pair-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: pairDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: pairDirectory) }
         try Data(archive).write(to: pairDirectory.appendingPathComponent("th08.dat"))
@@ -40,7 +59,7 @@ enum PBGArchiveImportTests {
         var damagedArchive = archive
         damagedArchive[0] ^= 0xff
         let damagedURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("th08-pbg-damaged-\\(UUID().uuidString).dat")
+            .appendingPathComponent("th08-pbg-damaged-\(UUID().uuidString).dat")
         try Data(damagedArchive).write(to: damagedURL)
         defer { try? FileManager.default.removeItem(at: damagedURL) }
         expectFailure("invalid retail PBG signature") {
@@ -74,7 +93,7 @@ enum PBGArchiveImportTests {
 
         expectFailure("missing LZSS terminator") {
             _ = try TH08DataArchiveImport.decodeLZSS(
-                Data(compressed.dropLast()),
+                Data(compressed.dropLast(2)),
                 expectedSize: table.count
             )
         }
@@ -192,7 +211,6 @@ enum PBGArchiveImportTests {
         writeBits(0, count: 4)
         writeBit(0)
         writeBits(0, count: 13)
-        if mask != 0x80 { output.append(current) }
         return output
     }
 
@@ -219,8 +237,8 @@ enum PBGArchiveImportTests {
         }
 
         // A zero flag followed by a zero 13-bit offset terminates the stream.
+        // Match the retail encoder: do not flush a partially filled final byte.
         for _ in 0..<14 { writeBit(0) }
-        if mask != 0x80 { output.append(current) }
         return output
     }
 
