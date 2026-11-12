@@ -26,6 +26,8 @@ jobs:
         run: |
           swiftc ios/BringUp/TH08BringUp/TH08DataArchiveImport.swift ios/Tests/PBGArchiveImportTests.swift -o /tmp/th08-pbg-import-tests
           /tmp/th08-pbg-import-tests
+          swiftc ios/BringUp/TH08BringUp/TH08IOSKeyboardKeyMapping.swift ios/Tests/KeyboardMappingTests.swift -o /tmp/th08-ios-key-mapping-tests
+          /tmp/th08-ios-key-mapping-tests
 
   simulator-build:
     runs-on: macos-15
