@@ -18,6 +18,32 @@ struct KeyboardCaptureView: UIViewRepresentable {
 }
 
 final class KeyboardCaptureUIView: UIView {
+    private var pressedHIDUsages = Set<UInt16>()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     override var canBecomeFirstResponder: Bool { true }
 
     override func didMoveToWindow() {
@@ -25,7 +51,7 @@ final class KeyboardCaptureUIView: UIView {
         if window != nil {
             becomeFirstResponder()
         } else {
-            TH08IOSClearKeyboardState()
+            clearKeyboardState()
         }
     }
 
@@ -40,20 +66,42 @@ final class KeyboardCaptureUIView: UIView {
     }
 
     override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        update(presses, isDown: false)
         super.pressesCancelled(presses, with: event)
+        clearKeyboardState()
+    }
+
+    @objc private func applicationWillResignActive() {
+        clearKeyboardState()
+    }
+
+    private func clearKeyboardState() {
+        pressedHIDUsages.removeAll()
         TH08IOSClearKeyboardState()
     }
 
     private func update(_ presses: Set<UIPress>, isDown: Bool) {
         for press in presses {
-            guard let key = press.key,
-                  let virtualKeyCode = TH08IOSKeyboardKeyMapping.virtualKeyCode(
-                    forHIDUsage: UInt16(key.keyCode.rawValue)
-                  ) else {
+            guard let key = press.key else {
                 continue
             }
-            TH08IOSSetKeyState(virtualKeyCode, isDown ? 1 : 0)
+            let usage = UInt16(key.keyCode.rawValue)
+            guard let virtualKeyCode = TH08IOSKeyboardKeyMapping.virtualKeyCode(
+                forHIDUsage: usage
+            ) else {
+                continue
+            }
+
+            if isDown {
+                pressedHIDUsages.insert(usage)
+            } else {
+                pressedHIDUsages.remove(usage)
+            }
+
+            let isVirtualKeyDown = TH08IOSKeyboardKeyMapping.isVirtualKeyDown(
+                virtualKeyCode,
+                forHIDUsages: pressedHIDUsages
+            )
+            TH08IOSSetKeyState(virtualKeyCode, isVirtualKeyDown ? 1 : 0)
         }
     }
 }

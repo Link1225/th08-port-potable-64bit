@@ -21,6 +21,18 @@ enum KeyboardMappingTests {
         }
         precondition(TH08IOSKeyboardKeyMapping.virtualKeyCode(forHIDUsage: 0x00) == nil)
         precondition(TH08IOSKeyboardKeyMapping.virtualKeyCode(forHIDUsage: 0xE2) == nil)
+
+        let bothShiftKeys: Set<UInt16> = [0xE1, 0xE5]
+        precondition(TH08IOSKeyboardKeyMapping.isVirtualKeyDown(0x10, forHIDUsages: bothShiftKeys))
+        precondition(
+            TH08IOSKeyboardKeyMapping.isVirtualKeyDown(0x10, forHIDUsages: [0xE5]),
+            "Releasing one Shift key must not release the other"
+        )
+        precondition(
+            !TH08IOSKeyboardKeyMapping.isVirtualKeyDown(0x10, forHIDUsages: []),
+            "The virtual Shift key must be released when neither HID key is held"
+        )
+
         print("iOS physical keyboard mapping tests passed (\(expected.count) mappings)")
     }
 }

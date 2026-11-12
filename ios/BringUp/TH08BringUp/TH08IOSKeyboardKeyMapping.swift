@@ -32,4 +32,8 @@ enum TH08IOSKeyboardKeyMapping {
         default: return nil
         }
     }
+
+    static func isVirtualKeyDown(_ virtualKeyCode: UInt8, forHIDUsages usages: Set<UInt16>) -> Bool {
+        usages.contains { virtualKeyCode(forHIDUsage: $0) == virtualKeyCode }
+    }
 }
