@@ -56,7 +56,7 @@ enum PBGArchiveImportTests {
                 )
                 precondition(
                     decrypted == source,
-                    "PBG rolling XOR round-trip failed for size \\(count), chunk \\(chunkSize)"
+                    "PBG rolling XOR round-trip failed for size \(count), chunk \(chunkSize)"
                 )
             }
         }
