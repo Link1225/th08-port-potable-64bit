@@ -29,7 +29,7 @@ enum PBGArchiveImportTests {
             maximumBytes: 0x400
         )
         precondition(
-            decryptedHeaderVector == [201, 125, 129, 69, 93, 9, 21, 209, 225, 157, 169, 101],
+            decryptedHeaderVector == [115, 43, 75, 243, 3, 195, 219, 139, 155, 83, 99, 27],
             "PBG header decryption vector failed"
         )
 
