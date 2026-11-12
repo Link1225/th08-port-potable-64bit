@@ -263,8 +263,11 @@ enum TH08DataArchiveImport {
         }
 
         var terminated = false
-        while output.count < expectedSize {
+        while true {
             if try readBit() != 0 {
+                guard output.count < expectedSize else {
+                    throw ImportError.invalidArchive("LZSS output exceeds declared size")
+                }
                 let literal = UInt8(try readBits(8))
                 output.append(literal)
                 dictionary[dictionaryHead] = literal
