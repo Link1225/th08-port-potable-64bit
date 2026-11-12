@@ -4,12 +4,14 @@ This directory contains the native iOS host application and the platform
 adapters being developed for the original TH08 engine.
 
 The current checkpoint provides a native bring-up shell, paired import of the
-user's original archives, and a DirectInput-compatible physical-keyboard state
-buffer. Import now decodes the retail PBG header and checks the entry count and
-file-table bounds before replacing the stored pair. It does not yet decompress
-or validate every archive entry. The keyboard buffer is not yet consumed by
-the game engine; the current Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL
-runtime still need an iOS platform implementation.
+user's original archives, and a physical-keyboard state buffer indexed by
+Win32 virtual-key codes. Import checks the retail PBG signature, decrypts and
+decodes the fixed-size header, and validates the entry count, file-table offset,
+and declared decompressed table size before replacing the stored pair. It does
+not yet decompress the file table or validate individual archive entries. The
+keyboard buffer is not yet consumed by the game engine; the current Win32/
+Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
+platform implementation.
 
 ## Bring-up app
 
@@ -24,9 +26,11 @@ copies succeed. Game archives are never committed to this repository.
 
 The UIKit keyboard responder captures external keyboard presses/releases and
 maps the TH08 movement, shot, bomb, confirm, Escape, Control, and Shift keys to
-the DirectInput scan codes. There are no touch controls. The C ABI in
-`TH08IOSKeyboard.h` exposes the 256-byte key state for the future engine
-adapter.
+Win32 virtual-key indices. This matches the index convention used by the
+engine's `GetKeyboardState` input path when no DirectInput keyboard device is
+present; it is not a DirectInput scan-code table. There are no touch controls.
+The C ABI in `TH08IOSKeyboard.h` exposes the 256-byte key state for the future
+engine adapter.
 
 ## Build
 
@@ -42,7 +46,8 @@ xcodebuild -project TH08BringUp.xcodeproj \
 
 The GitHub Actions workflow `.github/workflows/ios-bringup.yml` performs an
 unsigned Simulator build and an unsigned generic iOS device build on a macOS
-runner. An unsigned build is not an installable, signed IPA.
+runner. Both builds and the host-side keyboard bridge test passed for commit
+`b545ef2`. An unsigned build is not an installable, signed IPA.
 
 ## Remaining engine integration
 
@@ -53,7 +58,8 @@ runner. An unsigned build is not an installable, signed IPA.
    API and validate it against existing renderer captures.
 4. Connect the keyboard-state ABI to the game's input polling and clear held
    keys on app deactivation.
-5. Port audio, timing, save/config paths, focus handling, and archive loading.
+5. Port audio, timing, save/config paths, focus handling, and full archive
+   loading, including file-table decompression and entry validation.
 6. Run the original game with user-imported archives on a physical iPhone and
    verify gameplay, audio, suspend/resume, and frame pacing.
 
