@@ -61,11 +61,10 @@ runner. Both builds and the host-side keyboard bridge test passed for commit
    keys on app deactivation.
 5. Port audio, timing, save/config paths, focus handling, and full archive
    loading, including file-table decompression and entry validation.
-6. Add host-side synthetic retail-PBG tests for header/table encryption,
-   LZSS literal and back-reference decoding, archive-table validation, and
-   malformed-input rejection.
-7. Run the original game with user-imported archives on a physical iPhone and
-   verify gameplay, audio, suspend/resume, and frame pacing.
+6. Run the original game with user-imported archives on a physical iPhone and
+   verify gameplay, audio, suspend/resume, and frame pacing. The synthetic PBG
+   parser tests run in the iOS workflow on Linux; the keyboard bridge and Xcode
+   builds run on macOS.
 
 Do not add a nominal Apple CMake target that links stubs in place of platform
 services. Keep the original Windows/Linux targets and reconstruction sources
