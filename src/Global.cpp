@@ -10,6 +10,9 @@
 #include "i18n.hpp"
 #include "utils.hpp"
 #include <limits.h>
+#ifdef TH08_MODERN_IOS
+#include "TH08IOSKeyboard.h"
+#endif
 #include <math.h>
 #include <stdio.h>
 
@@ -728,7 +731,11 @@ u16 Controller::GetInput(void)
 
     if (g_Supervisor.keyboard == NULL)
     {
+#ifdef TH08_MODERN_IOS
+        TH08IOSGetKeyboardState(keyboardState, sizeof(keyboardState));
+#else
         GetKeyboardState(keyboardState);
+#endif
 
         buttons |= KEYBOARD_KEY_PRESSED(TH_BUTTON_UP, VK_UP);
         buttons |= KEYBOARD_KEY_PRESSED(TH_BUTTON_DOWN, VK_DOWN);
