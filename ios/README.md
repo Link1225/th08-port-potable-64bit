@@ -10,9 +10,10 @@ Win32 virtual-key codes. Import validates the retail PBG signature, decrypts
 the fixed-size header and compressed file table, checks the declared output
 size, and verifies each entry name and payload offset before replacing the
 stored pair. Individual asset payloads are still decompressed by the game
-engine at load time. The keyboard buffer is not yet consumed by the game
-engine; the current Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime
-still need an iOS platform implementation.
+engine at load time. An iOS-only compile-time path now bypasses DirectInput
+and reads the UIKit keyboard buffer from `Controller::GetInput`; no iOS game
+target currently compiles or runs that path. The current Win32/Direct3D 8 entry
+point and SDL2/desktop-OpenGL runtime still need an iOS platform implementation.
 
 ## Bring-up app
 
