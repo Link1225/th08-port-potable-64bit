@@ -30,12 +30,18 @@ static void *IncrementWorker(void *argument)
 struct ThreadArguments
 {
     volatile DWORD *result;
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    BOOL release;
 };
 
 static DWORD WINAPI ThreadWorker(LPVOID raw)
 {
     ThreadArguments *arguments = static_cast<ThreadArguments *>(raw);
-    Sleep(20);
+    pthread_mutex_lock(&arguments->mutex);
+    while (!arguments->release)
+        pthread_cond_wait(&arguments->condition, &arguments->mutex);
+    pthread_mutex_unlock(&arguments->mutex);
     *arguments->result = 7;
     return 7;
 }
@@ -110,15 +116,25 @@ int main()
     assert(FindClose(INVALID_HANDLE_VALUE) == FALSE);
 
     volatile DWORD threadResult = 0;
-    ThreadArguments arguments = {&threadResult};
+    ThreadArguments arguments;
+    arguments.result = &threadResult;
+    arguments.release = FALSE;
+    assert(pthread_mutex_init(&arguments.mutex, NULL) == 0);
+    assert(pthread_cond_init(&arguments.condition, NULL) == 0);
     DWORD createdThreadId = 0;
     HANDLE thread = CreateThread(NULL, 0, ThreadWorker,
                                  &arguments, 0, &createdThreadId);
     assert(thread != NULL);
     assert(createdThreadId != 0);
     assert(WaitForSingleObject(thread, 1) == WAIT_TIMEOUT);
+    pthread_mutex_lock(&arguments.mutex);
+    arguments.release = TRUE;
+    pthread_cond_broadcast(&arguments.condition);
+    pthread_mutex_unlock(&arguments.mutex);
     assert(WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
     assert(threadResult == 7);
     assert(CloseHandle(thread));
+    pthread_cond_destroy(&arguments.condition);
+    pthread_mutex_destroy(&arguments.mutex);
     return 0;
 }
