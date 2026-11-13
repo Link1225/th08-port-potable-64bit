@@ -95,5 +95,27 @@ int main()
     assert(DeleteFileA(ignoredPath));
     assert(rmdir(directory) == 0);
     assert(FindClose(INVALID_HANDLE_VALUE) == FALSE);
+
+    volatile DWORD threadResult = 0;
+    struct ThreadArguments
+    {
+        volatile DWORD *result;
+    };
+    ThreadArguments arguments = {&threadResult};
+    DWORD createdThreadId = 0;
+    HANDLE thread = CreateThread(NULL, 0,
+        [](LPVOID raw) -> DWORD {
+            ThreadArguments *args = static_cast<ThreadArguments *>(raw);
+            Sleep(20);
+            *args->result = 7;
+            return 7;
+        },
+        &arguments, 0, &createdThreadId);
+    assert(thread != NULL);
+    assert(createdThreadId != 0);
+    assert(WaitForSingleObject(thread, 1) == WAIT_TIMEOUT);
+    assert(WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
+    assert(threadResult == 7);
+    assert(CloseHandle(thread));
     return 0;
 }

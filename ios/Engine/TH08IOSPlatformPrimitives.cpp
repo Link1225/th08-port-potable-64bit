@@ -160,3 +160,143 @@ BOOL FindClose(HANDLE rawHandle)
     delete handle;
     return TRUE;
 }
+
+namespace
+{
+struct IOSThreadHandle
+{
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    LPTHREAD_START_ROUTINE startFunction;
+    LPVOID parameter;
+    DWORD threadId;
+    DWORD exitCode;
+    BOOL started;
+    BOOL finished;
+    uint32_t magic;
+};
+
+const uint32_t IOS_THREAD_HANDLE_MAGIC = 0x54483038;
+
+void *ThreadEntry(void *rawHandle)
+{
+    IOSThreadHandle *handle = static_cast<IOSThreadHandle *>(rawHandle);
+    const DWORD currentId = GetCurrentThreadId();
+
+    pthread_mutex_lock(&handle->mutex);
+    handle->threadId = currentId;
+    handle->started = TRUE;
+    pthread_cond_broadcast(&handle->condition);
+    pthread_mutex_unlock(&handle->mutex);
+
+    const DWORD exitCode = handle->startFunction(handle->parameter);
+
+    pthread_mutex_lock(&handle->mutex);
+    handle->exitCode = exitCode;
+    handle->finished = TRUE;
+    pthread_cond_broadcast(&handle->condition);
+    pthread_mutex_unlock(&handle->mutex);
+    return NULL;
+}
+} // namespace
+
+HANDLE CreateThread(LPVOID, size_t stackSize, LPTHREAD_START_ROUTINE startFunction,
+                    LPVOID parameter, DWORD creationFlags, LPDWORD threadId)
+{
+    if (startFunction == NULL || creationFlags != 0)
+        return NULL;
+
+    IOSThreadHandle *handle = new (std::nothrow) IOSThreadHandle();
+    if (handle == NULL)
+        return NULL;
+    memset(handle, 0, sizeof(*handle));
+    handle->startFunction = startFunction;
+    handle->parameter = parameter;
+    handle->magic = IOS_THREAD_HANDLE_MAGIC;
+    pthread_mutex_init(&handle->mutex, NULL);
+    pthread_cond_init(&handle->condition, NULL);
+
+    pthread_attr_t attributes;
+    pthread_attr_init(&attributes);
+    if (stackSize != 0)
+        pthread_attr_setstacksize(&attributes, stackSize);
+    const int result = pthread_create(&handle->thread, &attributes, ThreadEntry, handle);
+    pthread_attr_destroy(&attributes);
+    if (result != 0)
+    {
+        pthread_cond_destroy(&handle->condition);
+        pthread_mutex_destroy(&handle->mutex);
+        delete handle;
+        return NULL;
+    }
+
+    pthread_mutex_lock(&handle->mutex);
+    while (!handle->started)
+        pthread_cond_wait(&handle->condition, &handle->mutex);
+    if (threadId != NULL)
+        *threadId = handle->threadId;
+    pthread_mutex_unlock(&handle->mutex);
+    return static_cast<HANDLE>(handle);
+}
+
+DWORD WaitForSingleObject(HANDLE rawHandle, DWORD milliseconds)
+{
+    if (rawHandle == NULL || rawHandle == INVALID_HANDLE_VALUE)
+        return 0xffffffffU;
+    IOSThreadHandle *handle = static_cast<IOSThreadHandle *>(rawHandle);
+    if (handle->magic != IOS_THREAD_HANDLE_MAGIC)
+        return 0xffffffffU;
+
+    pthread_mutex_lock(&handle->mutex);
+    int result = 0;
+    if (milliseconds == INFINITE)
+    {
+        while (!handle->finished && result == 0)
+            result = pthread_cond_wait(&handle->condition, &handle->mutex);
+    }
+    else
+    {
+        struct timespec deadline;
+        clock_gettime(CLOCK_REALTIME, &deadline);
+        deadline.tv_sec += static_cast<time_t>(milliseconds / 1000U);
+        deadline.tv_nsec += static_cast<long>((milliseconds % 1000U) * 1000000U);
+        if (deadline.tv_nsec >= 1000000000L)
+        {
+            ++deadline.tv_sec;
+            deadline.tv_nsec -= 1000000000L;
+        }
+        while (!handle->finished && result == 0)
+            result = pthread_cond_timedwait(&handle->condition, &handle->mutex, &deadline);
+    }
+    const BOOL finished = handle->finished;
+    pthread_mutex_unlock(&handle->mutex);
+    if (finished)
+        return WAIT_OBJECT_0;
+    if (result == ETIMEDOUT)
+        return WAIT_TIMEOUT;
+    return 0xffffffffU;
+}
+
+BOOL CloseHandle(HANDLE rawHandle)
+{
+    if (rawHandle == NULL || rawHandle == INVALID_HANDLE_VALUE)
+        return FALSE;
+    IOSThreadHandle *handle = static_cast<IOSThreadHandle *>(rawHandle);
+    if (handle->magic != IOS_THREAD_HANDLE_MAGIC)
+        return FALSE;
+
+    pthread_mutex_lock(&handle->mutex);
+    const BOOL finished = handle->finished;
+    pthread_mutex_unlock(&handle->mutex);
+    if (!finished)
+        return FALSE;
+
+    if (pthread_join(handle->thread, NULL) != 0)
+        return FALSE;
+    handle->magic = 0;
+    pthread_cond_destroy(&handle->condition);
+    pthread_mutex_destroy(&handle->mutex);
+    delete handle;
+    return TRUE;
+}
