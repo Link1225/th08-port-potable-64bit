@@ -64,8 +64,9 @@ combining, linear fog, and cleanup of all four enabled vertex attributes after
 a draw. It also checks FVF offsets/decoding, transformed vertex layout,
 additional texture-coordinate set skipping, unsupported FVF rejection, and
 the supported D3D state mappings, world/view/projection and viewport
-math, XYZRHW reciprocal-W handling, and texture-matrix coordinates. These are
-unit tests, not a parity test against the Linux adapter's deterministic output.
+math, XYZRHW reciprocal-W handling, texture-matrix coordinates, sampler
+filter/address modes, and the ES2-supported blend operations. These are unit
+tests, not a parity test against the Linux adapter's deterministic output.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
 No game-engine call site uses it. CI compile/test success establishes that the
