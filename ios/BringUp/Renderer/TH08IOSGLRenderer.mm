@@ -56,7 +56,7 @@ static const char *kFragmentShader =
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
     "varying float v_fog_coordinate;\n"
-    "varying vec4 v_specular;\\n"
+    "varying vec4 v_specular;\n"
     "vec4 selectArgument(int argument, vec4 textureValue) {\n"
     "  if (argument == 0) return textureValue;\n"
     "  if (argument == 1) return v_color;\n"
