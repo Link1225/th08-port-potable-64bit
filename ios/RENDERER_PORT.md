@@ -40,7 +40,10 @@ made with a different current context. It provides:
 - offscreen RGBA8 render-target textures with 16-bit depth renderbuffers,
   framebuffer completeness checks, explicit bind/unbind, and owned-resource
   cleanup. The original framebuffer and its latest viewport are restored when
-  leaving an offscreen target.
+  leaving an offscreen target;
+- RGBA8 readback of the currently bound framebuffer with overflow checks and
+  restoration of the previous pack alignment. Returned rows use OpenGL's
+  bottom-to-top order.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
 It has not yet been compared against the Linux renderer's deterministic output,
