@@ -107,6 +107,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 } // namespace
 
 @interface TH08IOSGLRenderer () {
+    EAGLContext *_context;
     GLuint _program;
     GLuint _vertexBuffer;
     GLint _samplerLocation;
@@ -135,8 +136,10 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     self = [super init];
     if (self == nil)
         return nil;
-    if ([EAGLContext currentContext] == nil)
+    EAGLContext *context = [EAGLContext currentContext];
+    if (context == nil)
         return nil;
+    _context = context;
 
     _program = CreateProgram();
     if (_program == 0)
@@ -170,17 +173,23 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 
 - (void)dealloc
 {
-    if ([EAGLContext currentContext] != nil) {
+    // GL objects belong to the context that created them. Restore the caller's
+    // context after deleting resources, even when teardown happens elsewhere.
+    EAGLContext *previousContext = [EAGLContext currentContext];
+    const BOOL changedContext = previousContext != _context;
+    if (_context != nil && (!changedContext || [EAGLContext setCurrentContext:_context])) {
         if (_vertexBuffer != 0)
             glDeleteBuffers(1, &_vertexBuffer);
         if (_program != 0)
             glDeleteProgram(_program);
+        if (changedContext)
+            [EAGLContext setCurrentContext:previousContext];
     }
 }
 
 - (BOOL)setViewportX:(GLint)x y:(GLint)y width:(GLsizei)width height:(GLsizei)height
 {
-    if ([EAGLContext currentContext] == nil || width <= 0 || height <= 0)
+    if ([EAGLContext currentContext] != _context || width <= 0 || height <= 0)
         return NO;
     glViewport(x, y, width, height);
     _hasViewport = YES;
@@ -256,7 +265,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
            depth:(GLfloat)depth
 {
-    if ([EAGLContext currentContext] == nil)
+    if ([EAGLContext currentContext] != _context)
         return;
     glClearColor(red, green, blue, alpha);
     glClearDepthf(depth);
@@ -268,7 +277,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
                                 height:(GLsizei)height
                               rowBytes:(size_t)rowBytes
 {
-    if ([EAGLContext currentContext] == nil || pixels == NULL ||
+    if ([EAGLContext currentContext] != _context || pixels == NULL ||
         !IsValidTextureSize(width, height, rowBytes))
         return 0;
 
@@ -304,7 +313,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 
 - (void)deleteTexture:(GLuint)texture
 {
-    if (texture != 0 && [EAGLContext currentContext] != nil)
+    if (texture != 0 && [EAGLContext currentContext] == _context)
         glDeleteTextures(1, &texture);
 }
 
@@ -313,7 +322,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
            primitive:(TH08IOSRendererPrimitive)primitive
              texture:(GLuint)texture
 {
-    if ([EAGLContext currentContext] == nil || !_hasViewport ||
+    if ([EAGLContext currentContext] != _context || !_hasViewport ||
         vertices == NULL || count <= 0 || _program == 0 || _vertexBuffer == 0)
         return NO;
 
