@@ -21,7 +21,9 @@ module. It compiles and links explicit vertex/fragment shaders, accepts
 interleaved position/UV/RGBA vertices, draws primitive arrays, uploads RGBA8
 textures, applies explicit blend/depth/viewport state, accepts a column-major
 4×4 transform matrix, and implements fragment-shader alpha comparison for
-Direct3D 8 alpha-test modes. It is compiled into
+Direct3D 8 alpha-test modes. The renderer retains its creating `EAGLContext`,
+rejects draw/resource calls made under a different context, and temporarily
+restores its owning context during teardown to release GL objects safely. It is compiled into
 the bring-up target so both Simulator and device SDK builds validate the iOS
 graphics API integration.
 

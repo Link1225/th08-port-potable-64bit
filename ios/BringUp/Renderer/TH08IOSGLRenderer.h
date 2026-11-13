@@ -25,8 +25,11 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
     TH08IOSRendererPrimitiveTriangleFan = GL_TRIANGLE_FAN
 };
 
-// A deliberately small ES2 renderer core. The caller must make the owning
-// EAGLContext current before creating or using this object.
+// A deliberately small ES2 renderer core. The object retains the EAGLContext
+// current at initialization. Make that same context current before every API
+// call; calls made with a different context are rejected. Deallocation switches
+// to the owning context temporarily to release GL resources, then restores the
+// previously current context.
 @interface TH08IOSGLRenderer : NSObject
 
 - (nullable instancetype)initWithCurrentContext;
