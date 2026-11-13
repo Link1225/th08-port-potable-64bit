@@ -18,6 +18,7 @@ struct RenderTargetResources {
 
 static const char *kVertexShader =
     "attribute vec3 a_position;\n"
+    "attribute float a_position_w;\n"
     "uniform mat4 u_transform;\n"
     "attribute vec2 a_texcoord;\n"
     "attribute vec4 a_color;\n"
@@ -28,7 +29,8 @@ static const char *kVertexShader =
     "varying float v_fog_coordinate;\n"
     "varying vec4 v_specular;\n"
     "void main() {\n"
-    "  gl_Position = u_transform * vec4(a_position, 1.0);\n"
+    "  float positionW = a_position_w == 0.0 ? 1.0 : a_position_w;\n"
+    "  gl_Position = u_transform * vec4(a_position, positionW);\n"
     "  v_texcoord = a_texcoord;\n"
     "  v_color = a_color;\n"
     "  v_fog_coordinate = a_fog_coordinate;\n"
@@ -151,6 +153,7 @@ GLuint CreateProgram()
         glAttachShader(program, vertex);
         glAttachShader(program, fragment);
         glBindAttribLocation(program, 0, "a_position");
+        glBindAttribLocation(program, 5, "a_position_w");
         glBindAttribLocation(program, 1, "a_texcoord");
         glBindAttribLocation(program, 2, "a_color");
         glBindAttribLocation(program, 3, "a_fog_coordinate");
@@ -932,6 +935,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glEnableVertexAttribArray(2);
     glEnableVertexAttribArray(3);
     glEnableVertexAttribArray(4);
+    glEnableVertexAttribArray(5);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, x)));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
@@ -942,12 +946,15 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, fogCoordinate)));
     glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, specularRed)));
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride,
+                          reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, positionW)));
     glDrawArrays(static_cast<GLenum>(primitive), 0, count);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
     glDisableVertexAttribArray(3);
     glDisableVertexAttribArray(4);
+    glDisableVertexAttribArray(5);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     return glGetError() == GL_NO_ERROR;
 }
