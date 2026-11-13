@@ -914,16 +914,24 @@
     TH08IOSD3D8DeviceAdapter *adapter =
         [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
     XCTAssertNotNil(adapter);
-    XCTAssertTrue([adapter drawFVFVertices:vertices
-                                       fvf:TH08IOSD3D8::FVF_XYZ | TH08IOSD3D8::FVF_DIFFUSE
-                                     stride:sizeof(D3D8Vertex)
-                                      count:3
-                                      world:identity
-                                       view:identity
-                                 projection:identity
-                          textureTransform:identity
-                                   viewport:viewport
-                                  primitive:TH08IOSRendererPrimitiveTriangles]);
+    XCTAssertTrue([adapter setWorldTransform:identity]);
+    XCTAssertTrue([adapter setViewTransform:identity]);
+    XCTAssertTrue([adapter setProjectionTransform:identity]);
+    XCTAssertTrue([adapter setTextureTransform:identity]);
+    XCTAssertTrue([adapter setD3DViewport:viewport]);
+
+    TH08IOSD3D8::Matrix4 invalidTransform = identity;
+    invalidTransform.m[0][0] = NAN;
+    XCTAssertFalse([adapter setWorldTransform:invalidTransform]);
+    TH08IOSD3D8::Viewport invalidViewport = viewport;
+    invalidViewport.width = 0.0f;
+    XCTAssertFalse([adapter setD3DViewport:invalidViewport]);
+
+    XCTAssertTrue([adapter drawCurrentFVFVertices:vertices
+                                              fvf:TH08IOSD3D8::FVF_XYZ | TH08IOSD3D8::FVF_DIFFUSE
+                                            stride:sizeof(D3D8Vertex)
+                                             count:3
+                                         primitive:TH08IOSRendererPrimitiveTriangles]);
 
     NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
     XCTAssertNotNil(pixels);
@@ -946,16 +954,11 @@
         {4.0f, 0.0f, 0.5f, 1.0f, 0xFFFF0000u}
     };
     [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
-    XCTAssertTrue([adapter drawFVFVertices:transformedVertices
-                                       fvf:TH08IOSD3D8::FVF_XYZRHW | TH08IOSD3D8::FVF_DIFFUSE
-                                     stride:sizeof(D3D8TransformedVertex)
-                                      count:3
-                                      world:identity
-                                       view:identity
-                                 projection:identity
-                          textureTransform:identity
-                                   viewport:viewport
-                                  primitive:TH08IOSRendererPrimitiveTriangles]);
+    XCTAssertTrue([adapter drawCurrentFVFVertices:transformedVertices
+                                                  fvf:TH08IOSD3D8::FVF_XYZRHW | TH08IOSD3D8::FVF_DIFFUSE
+                                                stride:sizeof(D3D8TransformedVertex)
+                                                 count:3
+                                             primitive:TH08IOSRendererPrimitiveTriangles]);
     pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
     XCTAssertNotNil(pixels);
     bytes = (const uint8_t *)pixels.bytes;
