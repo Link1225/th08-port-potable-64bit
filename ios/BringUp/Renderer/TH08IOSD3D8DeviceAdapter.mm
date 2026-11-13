@@ -10,12 +10,48 @@
 
 #import <Foundation/Foundation.h>
 
+namespace {
+
+bool IsFiniteMatrix(const TH08IOSD3D8::Matrix4 &matrix)
+{
+    for (size_t row = 0; row < 4; ++row)
+        for (size_t column = 0; column < 4; ++column)
+            if (!isfinite(matrix.m[row][column]))
+                return false;
+    return true;
+}
+
+bool IsValidD3DViewport(const TH08IOSD3D8::Viewport &viewport)
+{
+    return isfinite(viewport.x) && isfinite(viewport.y) &&
+           isfinite(viewport.width) && isfinite(viewport.height) &&
+           isfinite(viewport.minZ) && isfinite(viewport.maxZ) &&
+           viewport.width > 0.0f && viewport.height > 0.0f &&
+           viewport.maxZ > viewport.minZ;
+}
+
+TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
+{
+    TH08IOSD3D8::Matrix4 matrix = {};
+    for (size_t index = 0; index < 4; ++index)
+        matrix.m[index][index] = 1.0f;
+    return matrix;
+}
+
+} // namespace
+
 @interface TH08IOSD3D8DeviceAdapter () {
     __weak TH08IOSGLRenderer *_renderer;
     uint32_t _renderStates[256];
     uint32_t _textureStates[32];
     NSMutableSet<NSNumber *> *_ownedTextures;
     GLuint _boundTexture;
+    TH08IOSD3D8::Matrix4 _worldTransform;
+    TH08IOSD3D8::Matrix4 _viewTransform;
+    TH08IOSD3D8::Matrix4 _projectionTransform;
+    TH08IOSD3D8::Matrix4 _textureTransform;
+    TH08IOSD3D8::Viewport _d3dViewport;
+    BOOL _hasD3DViewport;
 }
 @end
 
@@ -27,6 +63,11 @@
     if (self == nil) return nil;
     _renderer = renderer;
     _ownedTextures = [[NSMutableSet alloc] init];
+    _worldTransform = IdentityD3DMatrix();
+    _viewTransform = IdentityD3DMatrix();
+    _projectionTransform = IdentityD3DMatrix();
+    _textureTransform = IdentityD3DMatrix();
+    _hasD3DViewport = NO;
     _renderStates[19] = 5u;
     _renderStates[20] = 6u;
     _renderStates[23] = 4u;
@@ -266,6 +307,61 @@
         ![renderer setTextureMinificationFilter:minification magnificationFilter:magnification wrapS:wrapS wrapT:wrapT])
         return NO;
     return YES;
+}
+
+- (BOOL)setWorldTransform:(const TH08IOSD3D8::Matrix4 &)transform
+{
+    if (!IsFiniteMatrix(transform)) return NO;
+    _worldTransform = transform;
+    return YES;
+}
+
+- (BOOL)setViewTransform:(const TH08IOSD3D8::Matrix4 &)transform
+{
+    if (!IsFiniteMatrix(transform)) return NO;
+    _viewTransform = transform;
+    return YES;
+}
+
+- (BOOL)setProjectionTransform:(const TH08IOSD3D8::Matrix4 &)transform
+{
+    if (!IsFiniteMatrix(transform)) return NO;
+    _projectionTransform = transform;
+    return YES;
+}
+
+- (BOOL)setTextureTransform:(const TH08IOSD3D8::Matrix4 &)transform
+{
+    if (!IsFiniteMatrix(transform)) return NO;
+    _textureTransform = transform;
+    return YES;
+}
+
+- (BOOL)setD3DViewport:(const TH08IOSD3D8::Viewport &)viewport
+{
+    if (!IsValidD3DViewport(viewport)) return NO;
+    _d3dViewport = viewport;
+    _hasD3DViewport = YES;
+    return YES;
+}
+
+- (BOOL)drawCurrentFVFVertices:(const void *)vertices
+                           fvf:(uint32_t)fvf
+                         stride:(size_t)stride
+                          count:(size_t)count
+                      primitive:(TH08IOSRendererPrimitive)primitive
+{
+    if (!_hasD3DViewport) return NO;
+    return [self drawFVFVertices:vertices
+                             fvf:fvf
+                           stride:stride
+                            count:count
+                            world:_worldTransform
+                             view:_viewTransform
+                       projection:_projectionTransform
+                textureTransform:_textureTransform
+                         viewport:_d3dViewport
+                        primitive:primitive];
 }
 
 - (BOOL)setRenderState:(uint32_t)state value:(uint32_t)value
