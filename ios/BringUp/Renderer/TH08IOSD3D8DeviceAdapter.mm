@@ -171,60 +171,17 @@ TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
 }
 
 - (BOOL)copySurface:(TH08IOSD3D8Surface *)source
-        sourceRect:(TH08IOSD3D8SurfaceRect)sourceRect
+        sourceRect:(TH08IOSD3D8Rect)sourceRect
          toSurface:(TH08IOSD3D8Surface *)destination
      destinationX:(int32_t)destinationX
      destinationY:(int32_t)destinationY
 {
-    if (source == nil || destination == nil || source == destination ||
-        source.isLocked || destination.isLocked ||
-        source.format != destination.format ||
-        source.format == TH08IOSD3D8PixelFormatD16 ||
-        sourceRect.left < 0 || sourceRect.top < 0 ||
-        sourceRect.right <= sourceRect.left || sourceRect.bottom <= sourceRect.top ||
-        destinationX < 0 || destinationY < 0 ||
-        static_cast<uint32_t>(sourceRect.right) > source.width ||
-        static_cast<uint32_t>(sourceRect.bottom) > source.height)
+    if (source == nil || destination == nil)
         return NO;
-
-    const uint32_t copyWidth = static_cast<uint32_t>(sourceRect.right - sourceRect.left);
-    const uint32_t copyHeight = static_cast<uint32_t>(sourceRect.bottom - sourceRect.top);
-    if (static_cast<uint64_t>(destinationX) + copyWidth > destination.width ||
-        static_cast<uint64_t>(destinationY) + copyHeight > destination.height)
-        return NO;
-
-    NSData *sourcePixels = [source copyRGBA8Pixels];
-    NSData *destinationPixels = [destination copyRGBA8Pixels];
-    if (sourcePixels == nil || destinationPixels == nil)
-        return NO;
-    const size_t sourceRowBytes = static_cast<size_t>(source.width) * 4u;
-    const size_t destinationRowBytes = static_cast<size_t>(destination.width) * 4u;
-    if (sourceRowBytes / 4u != source.width ||
-        destinationRowBytes / 4u != destination.width ||
-        static_cast<size_t>(source.height) > std::numeric_limits<size_t>::max() / sourceRowBytes ||
-        static_cast<size_t>(destination.height) > std::numeric_limits<size_t>::max() / destinationRowBytes ||
-        sourcePixels.length != sourceRowBytes * source.height ||
-        destinationPixels.length != destinationRowBytes * destination.height)
-        return NO;
-
-    NSMutableData *updated = [destinationPixels mutableCopy];
-    if (updated == nil)
-        return NO;
-    const uint8_t *src = static_cast<const uint8_t *>(sourcePixels.bytes);
-    uint8_t *dst = static_cast<uint8_t *>(updated.mutableBytes);
-    const size_t copyBytes = static_cast<size_t>(copyWidth) * 4u;
-    for (uint32_t row = 0; row < copyHeight; ++row) {
-        const size_t srcOffset =
-            static_cast<size_t>(sourceRect.top + static_cast<int32_t>(row)) * sourceRowBytes +
-            static_cast<size_t>(sourceRect.left) * 4u;
-        const size_t dstOffset =
-            static_cast<size_t>(destinationY + static_cast<int32_t>(row)) * destinationRowBytes +
-            static_cast<size_t>(destinationX) * 4u;
-        memcpy(dst + dstOffset, src + srcOffset, copyBytes);
-    }
-    return [destination replaceWithRGBA8Pixels:updated.bytes
-                                      rowBytes:destinationRowBytes
-                                     bottomUp:NO];
+    const TH08IOSD3D8Point destinationPoint = {destinationX, destinationY};
+    return [destination copyFromSurface:source
+                             sourceRect:&sourceRect
+                        destinationPoint:destinationPoint];
 }
 
 - (BOOL)deleteTexture:(GLuint)texture

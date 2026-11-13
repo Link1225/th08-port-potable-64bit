@@ -1502,6 +1502,11 @@
     TH08IOSD3D8DeviceAdapter *adapter =
         [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
     XCTAssertNotNil(adapter);
+
+    const GLuint target = [self.renderer createRenderTargetWithWidth:4 height:4];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:4 height:4]);
     [self.renderer clearRed:0.25f green:0.5f blue:0.75f alpha:1.0f depth:1.0f];
     XCTAssertTrue([adapter copyCurrentFramebufferToSurface:surface]);
     NSData *rgba = [surface copyRGBA8Pixels];
@@ -1516,6 +1521,9 @@
                          lockedRect:&locked]);
     XCTAssertFalse([adapter copyCurrentFramebufferToSurface:surface]);
     XCTAssertTrue([surface unlockRect]);
+
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:0]);
+    [self.renderer deleteTexture:target];
 }
 
 - (void)testD3D8CopyRectsCopiesOnlyRequestedRegion
@@ -1529,9 +1537,10 @@
 
     TH08IOSD3D8LockedRect locked = {};
     XCTAssertTrue([source lockRect:nullptr flags:0u lockedRect:&locked]);
+    // A8R8G8B8 surface storage is byte-ordered B, G, R, A.
     const uint8_t sourcePixels[16] = {
-        255u, 0u, 0u, 255u, 0u, 255u, 0u, 255u,
-        0u, 0u, 255u, 255u, 255u, 255u, 0u, 255u
+        0u, 0u, 255u, 255u, 0u, 255u, 0u, 255u,
+        255u, 0u, 0u, 255u, 0u, 255u, 255u, 255u
     };
     memcpy(locked.bits, sourcePixels, sizeof(sourcePixels));
     XCTAssertTrue([source unlockRect]);
@@ -1543,7 +1552,7 @@
     TH08IOSD3D8DeviceAdapter *adapter =
         [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
     XCTAssertNotNil(adapter);
-    const TH08IOSD3D8SurfaceRect rect = {1, 0, 2, 2};
+    const TH08IOSD3D8Rect rect = {1, 0, 2, 2};
     XCTAssertTrue([adapter copySurface:source sourceRect:rect toSurface:destination
                           destinationX:2 destinationY:1]);
 

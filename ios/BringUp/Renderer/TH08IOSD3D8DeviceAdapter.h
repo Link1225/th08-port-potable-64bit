@@ -4,12 +4,6 @@
 #import "TH08IOSD3D8Transform.h"
 #include <stdint.h>
 
-typedef struct TH08IOSD3D8SurfaceRect {
-    int32_t left;
-    int32_t top;
-    int32_t right;
-    int32_t bottom;
-} TH08IOSD3D8SurfaceRect;
 NS_ASSUME_NONNULL_BEGIN
 @interface TH08IOSD3D8DeviceAdapter : NSObject
 - (nullable instancetype)initWithRenderer:(TH08IOSGLRenderer *)renderer;
@@ -20,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (GLuint)createTextureFromSurface:(TH08IOSD3D8Surface *)surface;
 - (BOOL)copyCurrentFramebufferToSurface:(TH08IOSD3D8Surface *)surface;
 - (BOOL)copySurface:(TH08IOSD3D8Surface *)source
-        sourceRect:(TH08IOSD3D8SurfaceRect)sourceRect
+        sourceRect:(TH08IOSD3D8Rect)sourceRect
          toSurface:(TH08IOSD3D8Surface *)destination
      destinationX:(int32_t)destinationX
      destinationY:(int32_t)destinationY;
