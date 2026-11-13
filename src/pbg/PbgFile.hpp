@@ -3,6 +3,9 @@
 #include "diffbuild.hpp"
 #include "inttypes.hpp"
 #include <windows.h>
+#ifdef TH08_MODERN_IOS
+#include "TH08IOSFileHandle.hpp"
+#endif
 
 namespace th08
 {
@@ -41,7 +44,11 @@ class CPbgFile : public IPbgFile
     DWORD ReadInt(i32 *outData);
 
   protected:
+#ifdef TH08_MODERN_IOS
+    TH08IOSFileHandle m_file;
+#else
     HANDLE m_hFile;
+#endif
 
   private:
     DWORD m_DesiredAccess;

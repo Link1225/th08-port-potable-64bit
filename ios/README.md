@@ -65,7 +65,9 @@ An initial `TH08EngineCore` static-library target is now declared in the XcodeGe
 project. It is intended to compile the reconstructed game translation units for
 the iOS SDK (excluding the Win32 `main.cpp` entry point and all Linux runtime
 sources). It reuses the portable Win32/DirectX type declarations under
-`src/modern/linux/include` and defines an iOS-specific compatibility preinclude.
+`src/modern/linux/include` and defines an iOS-specific compatibility preinclude. The PBG file abstraction
+has a POSIX backend for opening, reading, seeking, and sizing the imported
+`th08.dat` archive, with a separate C++98 test for descriptor operations.
 This is a compile-only integration checkpoint: it does not provide the required
 Win32 runtime functions, a Direct3D 8 COM device, an audio backend, or a frame-loop
 entry point, and the app does not link or execute the library yet. CI must compile
