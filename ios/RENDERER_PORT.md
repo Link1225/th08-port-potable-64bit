@@ -46,13 +46,22 @@ made with a different current context. It provides:
   bottom-to-top order;
 - a GLKit-backed view in the bring-up app that creates the ES2 renderer and
   submits a small smoke-test triangle to the view's drawable framebuffer.
+- a platform-neutral D3D8 FVF layout decoder that validates XYZ/XYZRHW
+  layouts, accounts for optional normal/point-size/diffuse/specular fields and
+  up to eight texture-coordinate sets, and decodes the first set and D3DCOLOR
+  without unaligned loads;
+- a fail-closed mapping table for the D3DTOP subset, texture arguments without
+  complement/alpha-replicate modifiers, all eight D3D comparison functions,
+  and the eleven standard D3D blend factors supported by ES2.
 
 The XCTest suite now exercises offscreen readback and switching, texture
 sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
 scissor and clear behavior, color-write masks, blend equations, texture-factor
 combining, linear fog, and cleanup of all four enabled vertex attributes after
-a draw. These are renderer unit tests, not a parity test against the Linux
-adapter's deterministic output.
+a draw. It also checks FVF offsets/decoding, transformed vertex layout,
+additional texture-coordinate set skipping, unsupported FVF rejection, and
+the supported D3D state mappings. These are unit tests, not a parity test
+against the Linux adapter's deterministic output.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
 No game-engine call site uses it. CI compile/test success establishes that the
