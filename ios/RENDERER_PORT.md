@@ -56,6 +56,9 @@ made with a different current context. It provides:
 - D3D row-vector world/view/projection transform helpers, including viewport
   mapping, view-space fog-coordinate capture, pre-transformed XYZRHW reciprocal-W
   handling, and the Linux adapter's texture-matrix coordinate convention.
+- a conversion stage that combines FVF decoding, world/view/projection or
+  pre-transformed position handling, viewport/fog math, texture transforms,
+  and vertex color into one ES2-ready intermediate vertex.
 
 The XCTest suite now exercises offscreen readback and switching, texture
 sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
@@ -65,8 +68,9 @@ a draw. It also checks FVF offsets/decoding, transformed vertex layout,
 additional texture-coordinate set skipping, unsupported FVF rejection, and
 the supported D3D state mappings, world/view/projection and viewport
 math, XYZRHW reciprocal-W handling, texture-matrix coordinates, sampler
-filter/address modes, and the ES2-supported blend operations. These are unit
-tests, not a parity test against the Linux adapter's deterministic output.
+filter/address modes, ES2-supported blend operations, and combined FVF-to-ES2
+vertex conversion. These are unit tests, not a parity test against the Linux
+adapter's deterministic output.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
 No game-engine call site uses it. CI compile/test success establishes that the
