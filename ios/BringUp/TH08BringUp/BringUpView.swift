@@ -17,6 +17,14 @@ struct BringUpView: View {
                 Text("This app currently prepares your game data. The original game engine is not connected yet.")
                     .foregroundColor(.secondary)
 
+                TH08IOSRendererPreview()
+                    .frame(height: 170)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Text("OpenGL ES renderer preview — the original game engine is not running here yet.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
                 VStack(alignment: .leading, spacing: 8) {
                     Label("th08.dat", systemImage: "doc")
                     Label("thbgm.dat", systemImage: "music.note")

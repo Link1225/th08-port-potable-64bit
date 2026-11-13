@@ -56,7 +56,7 @@ implementation.
 
 ## Bring-up app
 
-The XcodeGen project in `BringUp/project.yml` builds a SwiftUI app. It imports:
+The XcodeGen project in `BringUp/project.yml` builds a SwiftUI app. Its bring-up screen instantiates the ES2 renderer inside a GLKit-backed OpenGL ES view and draws a small colored triangle into the view's drawable framebuffer. This confirms that the renderer is used by the app's view lifecycle, but it is only a renderer smoke preview, not game output. The app also imports:
 
 - `th08.dat`
 - `thbgm.dat`

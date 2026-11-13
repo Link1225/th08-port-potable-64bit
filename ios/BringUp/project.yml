@@ -20,6 +20,7 @@ targets:
       - path: Renderer
     dependencies:
       - sdk: OpenGLES.framework
+      - sdk: GLKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.th08.bringup
