@@ -6,6 +6,7 @@
 #import "../Renderer/TH08IOSD3D8VertexLayout.h"
 #import "../Renderer/TH08IOSD3D8StateMapping.h"
 #import "../Renderer/TH08IOSD3D8Transform.h"
+#import "../Renderer/TH08IOSD3D8VertexConversion.h"
 
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
@@ -842,5 +843,58 @@
     XCTAssertFalse(MapTextureAddress(4u, &value));
     XCTAssertFalse(MapTextureAddress(5u, &value));
     XCTAssertFalse(MapTextureAddress(1u, nullptr));
+}
+
+- (void)testD3D8VertexConversionCombinesFVFTransformColorAndTextureCoordinates
+{
+    using namespace TH08IOSD3D8;
+    const uint32_t fvf = FVF_XYZ | FVF_DIFFUSE | (1u << FVF_TEXCOUNT_SHIFT);
+    VertexLayout layout = {};
+    XCTAssertEqual(BuildVertexLayout(fvf, &layout), LayoutError::None);
+
+    uint8_t bytes[layout.requiredStride] = {};
+    const float xyz[3] = {0.25f, -0.5f, 0.75f};
+    const uint32_t color = 0x80402010u;
+    const float uv[2] = {0.2f, 0.4f};
+    memcpy(bytes, xyz, sizeof(xyz));
+    memcpy(bytes + layout.diffuseOffset, &color, sizeof(color));
+    memcpy(bytes + layout.textureCoordinateOffset, uv, sizeof(uv));
+
+    Matrix4 identity = {};
+    for (NSUInteger index = 0; index < 4; ++index)
+        identity.m[index][index] = 1.0f;
+    Viewport viewport = {0, 0, 320, 240, 0, 1};
+    ConvertedVertex output = {};
+    XCTAssertEqual(ConvertVertex(layout, bytes, sizeof(bytes), identity, identity,
+                                 identity, identity, viewport, &output), LayoutError::None);
+    XCTAssertEqualWithAccuracy(output.x, 160.5f + 0.25f * 160.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.y, 120.5f + 0.5f * 120.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.z, 0.75f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.w, 1.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.u, 0.2f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.v, 0.4f, 0.0001f);
+    XCTAssertEqual(output.red, (uint8_t)0x40);
+    XCTAssertEqual(output.green, (uint8_t)0x20);
+    XCTAssertEqual(output.blue, (uint8_t)0x10);
+    XCTAssertEqual(output.alpha, (uint8_t)0x80);
+    XCTAssertEqualWithAccuracy(output.fogCoordinate, 0.75f, 0.0001f);
+}
+
+- (void)testD3D8VertexConversionDoesNotModifyOutputOnDecodeFailure
+{
+    using namespace TH08IOSD3D8;
+    VertexLayout layout = {};
+    XCTAssertEqual(BuildVertexLayout(FVF_XYZ, &layout), LayoutError::None);
+    Matrix4 identity = {};
+    for (NSUInteger index = 0; index < 4; ++index)
+        identity.m[index][index] = 1.0f;
+    Viewport viewport = {0, 0, 100, 100, 0, 1};
+    ConvertedVertex output = {};
+    output.x = 123.0f;
+    uint8_t shortVertex[4] = {};
+    XCTAssertEqual(ConvertVertex(layout, shortVertex, sizeof(shortVertex), identity,
+                                 identity, identity, identity, viewport, &output),
+                   LayoutError::StrideTooSmall);
+    XCTAssertEqualWithAccuracy(output.x, 123.0f, 0.0001f);
 }
 @end
