@@ -1,5 +1,10 @@
 #import "TH08IOSD3D8DeviceAdapter.h"
 #import "TH08IOSD3D8StateMapping.h"
+#import "TH08IOSD3D8VertexLayout.h"
+#import "TH08IOSD3D8VertexConversion.h"
+#include <limits>
+#include <new>
+#include <vector>
 #include <math.h>
 #include <string.h>
 
@@ -98,6 +103,86 @@
                 primitive:(TH08IOSRendererPrimitive)primitive
 {
     return [self drawVertices:vertices count:count primitive:primitive texture:_boundTexture];
+}
+
+- (BOOL)drawFVFVertices:(const void *)vertices
+                   fvf:(uint32_t)fvf
+                 stride:(size_t)stride
+                  count:(size_t)count
+                  world:(const TH08IOSD3D8::Matrix4 &)world
+                   view:(const TH08IOSD3D8::Matrix4 &)view
+             projection:(const TH08IOSD3D8::Matrix4 &)projection
+      textureTransform:(const TH08IOSD3D8::Matrix4 &)textureTransform
+               viewport:(const TH08IOSD3D8::Viewport &)viewport
+              primitive:(TH08IOSRendererPrimitive)primitive
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || ![renderer isOwningContextCurrent] ||
+        vertices == NULL || count == 0u ||
+        count > static_cast<size_t>(std::numeric_limits<GLsizei>::max()))
+        return NO;
+
+    TH08IOSD3D8::VertexLayout layout = {};
+    if (TH08IOSD3D8::BuildVertexLayout(fvf, &layout) != TH08IOSD3D8::LayoutError::None)
+        return NO;
+
+    std::vector<TH08IOSD3D8::ConvertedVertex> converted;
+    const TH08IOSD3D8::BatchConversionError conversionError =
+        TH08IOSD3D8::ConvertVertices(layout, vertices, stride, count,
+                                     world, view, projection, textureTransform,
+                                     viewport, &converted);
+    if (conversionError != TH08IOSD3D8::BatchConversionError::None ||
+        converted.size() != count)
+        return NO;
+
+    std::vector<TH08IOSRendererVertex> rendererVertices;
+    try {
+        rendererVertices.resize(count);
+    } catch (const std::bad_alloc &) {
+        return NO;
+    }
+
+    for (size_t index = 0; index < count; ++index) {
+        const TH08IOSD3D8::ConvertedVertex &source = converted[index];
+        TH08IOSRendererVertex destination = {};
+        TH08IOSD3D8::HomogeneousPosition screen = {};
+        screen.x = source.x;
+        screen.y = source.y;
+        screen.z = source.z;
+        screen.w = source.w;
+        float clip[4] = {};
+        if (!TH08IOSD3D8::ViewportToClipPosition(screen, viewport, clip))
+            return NO;
+
+        destination.x = clip[0];
+        destination.y = clip[1];
+        destination.z = clip[2];
+        destination.positionW = clip[3];
+        destination.u = source.u;
+        destination.v = source.v;
+        destination.red = source.red;
+        destination.green = source.green;
+        destination.blue = source.blue;
+        destination.alpha = source.alpha;
+        destination.fogCoordinate = source.fogCoordinate;
+        destination.specularRed = source.specularRed;
+        destination.specularGreen = source.specularGreen;
+        destination.specularBlue = source.specularBlue;
+        destination.specularAlpha = source.specularAlpha;
+        rendererVertices[index] = destination;
+    }
+
+    const GLfloat identity[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    if (![renderer setTransformMatrix:identity])
+        return NO;
+    return [self drawBoundVertices:rendererVertices.data()
+                             count:static_cast<GLsizei>(count)
+                         primitive:primitive];
 }
 
 - (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
