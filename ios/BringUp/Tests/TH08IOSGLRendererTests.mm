@@ -800,4 +800,47 @@
     XCTAssertEqualWithAccuracy(u, 7.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(v, 20.25f, 0.0001f);
 }
+
+- (void)testD3D8BlendOperationMappingRejectsUnsupportedMinMax
+{
+    using namespace TH08IOSD3D8;
+    GLenum value = 0;
+    XCTAssertTrue(MapBlendOperation(1u, &value));
+    XCTAssertEqual(value, (GLenum)GL_FUNC_ADD);
+    XCTAssertTrue(MapBlendOperation(2u, &value));
+    XCTAssertEqual(value, (GLenum)GL_FUNC_SUBTRACT);
+    XCTAssertTrue(MapBlendOperation(3u, &value));
+    XCTAssertEqual(value, (GLenum)GL_FUNC_REVERSE_SUBTRACT);
+    XCTAssertFalse(MapBlendOperation(4u, &value));
+    XCTAssertFalse(MapBlendOperation(5u, &value));
+    XCTAssertFalse(MapBlendOperation(1u, nullptr));
+}
+
+- (void)testD3D8TextureFilterMappingSupportsOnlyNonMipmapModes
+{
+    using namespace TH08IOSD3D8;
+    GLenum value = 0;
+    XCTAssertTrue(MapTextureFilter(1u, &value));
+    XCTAssertEqual(value, (GLenum)GL_NEAREST);
+    XCTAssertTrue(MapTextureFilter(2u, &value));
+    XCTAssertEqual(value, (GLenum)GL_LINEAR);
+    XCTAssertFalse(MapTextureFilter(0u, &value));
+    XCTAssertFalse(MapTextureFilter(3u, &value));
+    XCTAssertFalse(MapTextureFilter(1u, nullptr));
+}
+
+- (void)testD3D8TextureAddressMapping
+{
+    using namespace TH08IOSD3D8;
+    GLenum value = 0;
+    XCTAssertTrue(MapTextureAddress(1u, &value));
+    XCTAssertEqual(value, (GLenum)GL_REPEAT);
+    XCTAssertTrue(MapTextureAddress(2u, &value));
+    XCTAssertEqual(value, (GLenum)GL_MIRRORED_REPEAT);
+    XCTAssertTrue(MapTextureAddress(3u, &value));
+    XCTAssertEqual(value, (GLenum)GL_CLAMP_TO_EDGE);
+    XCTAssertFalse(MapTextureAddress(4u, &value));
+    XCTAssertFalse(MapTextureAddress(5u, &value));
+    XCTAssertFalse(MapTextureAddress(1u, nullptr));
+}
 @end

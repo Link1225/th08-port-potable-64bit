@@ -92,4 +92,39 @@ static inline bool MapBlendFactor(uint32_t d3dFactor, GLenum *output)
     }
 }
 
+static inline bool MapBlendOperation(uint32_t d3dOperation, GLenum *output)
+{
+    if (output == NULL)
+        return false;
+    switch (d3dOperation) {
+    case 1u: *output = GL_FUNC_ADD; return true; // D3DBLENDOP_ADD
+    case 2u: *output = GL_FUNC_SUBTRACT; return true; // D3DBLENDOP_SUBTRACT
+    case 3u: *output = GL_FUNC_REVERSE_SUBTRACT; return true; // D3DBLENDOP_REVSUBTRACT
+    default: return false; // MIN/MAX require ES2 extension support.
+    }
+}
+
+static inline bool MapTextureFilter(uint32_t d3dFilter, GLenum *output)
+{
+    if (output == NULL)
+        return false;
+    switch (d3dFilter) {
+    case 1u: *output = GL_NEAREST; return true; // D3DTEXF_POINT
+    case 2u: *output = GL_LINEAR; return true; // D3DTEXF_LINEAR
+    default: return false; // Mipmapped filters need a complete mip chain.
+    }
+}
+
+static inline bool MapTextureAddress(uint32_t d3dAddress, GLenum *output)
+{
+    if (output == NULL)
+        return false;
+    switch (d3dAddress) {
+    case 1u: *output = GL_REPEAT; return true; // D3DTADDRESS_WRAP
+    case 2u: *output = GL_MIRRORED_REPEAT; return true; // D3DTADDRESS_MIRROR
+    case 3u: *output = GL_CLAMP_TO_EDGE; return true; // D3DTADDRESS_CLAMP
+    default: return false; // Border and mirror-once are not equivalent in ES2.
+    }
+}
+
 } // namespace TH08IOSD3D8
