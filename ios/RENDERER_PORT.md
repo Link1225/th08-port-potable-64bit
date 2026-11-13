@@ -43,21 +43,33 @@ made with a different current context. It provides:
   leaving an offscreen target;
 - RGBA8 readback of the currently bound framebuffer with overflow checks and
   restoration of the previous pack alignment. Returned rows use OpenGL's
-  bottom-to-top order.
+  bottom-to-top order;
+- a GLKit-backed view in the bring-up app that creates the ES2 renderer and
+  submits a small smoke-test triangle to the view's drawable framebuffer.
+
+The XCTest suite now exercises offscreen readback and switching, texture
+sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
+scissor and clear behavior, color-write masks, blend equations, texture-factor
+combining, linear fog, and cleanup of all four enabled vertex attributes after
+a draw. These are renderer unit tests, not a parity test against the Linux
+adapter's deterministic output.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
-It has not yet been compared against the Linux renderer's deterministic output,
-and no game-engine call site uses it. CI compile success establishes only that
-these Objective-C++/ES2 APIs compile for the selected SDKs; it does not establish
-rendering parity or device performance.
+No game-engine call site uses it. CI compile/test success establishes that the
+bring-up target and covered renderer operations work in the simulator
+environment; it does not establish rendering parity or physical-device
+performance.
 
 ## Current next blocker
 
-The existing iOS app remains a data-import and keyboard bring-up shell. The
-original engine still has no iOS frame loop, full renderer adapter, audio
-integration, or game target. The next renderer milestone is a deterministic
-ES2 offscreen render test suite (texture upload/readback, transforms, alpha,
-blend/depth and render-target switching) that can be compared against the Linux
-adapter's reference captures. After that, implement the missing D3D8 semantics
-and connect the renderer to the engine. Keep the existing desktop renderer
+The iOS app remains a data-import and keyboard bring-up shell with a renderer
+smoke preview. The original engine still has no iOS frame loop, full renderer
+adapter, audio integration, or game target. The immediate renderer task is to
+build a D3D8-facing device adapter over the ES2 renderer. It must translate the
+existing device calls and state arrays, decode the engine's FVF vertex layouts
+(including pre-transformed XYZRHW vertices), reproduce the Linux adapter's
+position/viewport and texture-transform conventions, and cover the original
+texture operations, argument modifiers, fog and render-target semantics.
+Create deterministic comparison captures from the Linux adapter before
+connecting this adapter to the engine. Keep the existing desktop renderer
 untouched until the new path can be compared.
