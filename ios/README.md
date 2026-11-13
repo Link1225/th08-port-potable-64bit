@@ -43,16 +43,23 @@ The current state subset includes:
 - Per-vertex linear fog coordinates with configurable fog color and start/end.
 - A column-major 4×4 matrix uniform and fragment-shader alpha comparisons.
 
-This is still a renderer foundation, not a Direct3D 8 replacement. The
-texture-stage subset does not cover every D3D8 operation or argument modifier;
-there is no complete D3D8 state translation layer, matrix stack, original
-transform/viewport convention adapter, transformed/lit vertex pipeline,
-texture format conversion, mipmap handling, or complete device/resource
-lifecycle. The fog input is an explicit per-vertex scalar and has not yet been
-matched against the original engine's fog-coordinate generation. The game
-engine does not call this renderer yet. The original Win32/Direct3D 8 entry
-point and SDL2/desktop-OpenGL runtime still need an iOS platform
-implementation.
+The current bring-up also contains
+`TH08IOSD3D8DeviceAdapter`, a partial Direct3D 8 compatibility layer. It
+stores world/view/projection/texture transforms and viewport state, validates
+the supported render and texture-stage states, owns RGBA8 textures, converts
+interleaved FVF vertex batches (including XYZ and XYZRHW positions), maps D3D
+viewport coordinates back to ES2 clip space, and submits the converted
+vertices to the renderer. Tests cover the conversion path, transformed
+vertices, viewport state, texture ownership, and invalid input handling.
+
+This remains a renderer foundation, not a Direct3D 8 replacement. The adapter
+is not an implementation of the complete `IDirect3DDevice8` interface. It
+does not yet cover every D3D8 render/texture-stage state, all FVF layouts,
+texture formats, mipmaps, multiple texture stages, the full surface/vertex
+buffer/resource lifecycle, or the original engine's exact fog generation.
+The game engine does not call this renderer or adapter yet. The original
+Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
+platform implementation.
 
 ## Bring-up app
 
@@ -72,6 +79,16 @@ engine's `GetKeyboardState` input path when no DirectInput keyboard device is
 present; it is not a DirectInput scan-code table. There are no touch controls.
 The C ABI in `TH08IOSKeyboard.h` exposes the 256-byte key state for the future
 engine adapter.
+
+## Target device
+
+The intended physical device is **iPhone 14 Plus**. The app target is a
+universal iOS application with an iOS 15.0 deployment target, and the generic
+iOS device build checks the arm64 device SDK path. The current GitHub Actions
+runner does not provide an iPhone 14 Plus simulator device type, so renderer
+tests use the available iPhone 16 Plus simulator as a similar large-screen
+proxy. This simulator proxy does not replace testing on the actual iPhone 14
+Plus.
 
 ## Build
 
