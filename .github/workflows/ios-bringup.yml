@@ -52,12 +52,36 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
+      - name: Ensure an iOS Simulator runtime is available
+        run: |
+          if ! xcrun simctl list devices available | grep -q 'iPhone'; then
+            xcodebuild -downloadPlatform iOS
+          fi
+          xcrun simctl list devices available
       - name: Run OpenGL ES renderer tests
         run: |
+          DEVICE_ID="$(python3 - <<'PY'
+          import json
+          import subprocess
+          data = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "--json"],
+              text=True,
+          ))
+          devices = [
+              device
+              for runtime_devices in data["devices"].values()
+              for device in runtime_devices
+              if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
+          ]
+          if not devices:
+              raise SystemExit("No available iPhone simulator after installing the iOS runtime.")
+          print(devices[0]["udid"])
+          PY
+          )"
           xcodebuild \
             -project ios/BringUp/TH08BringUp.xcodeproj \
             -scheme TH08BringUp \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             -destination-timeout 90 \
             -parallel-testing-enabled NO \
             -configuration Debug \
