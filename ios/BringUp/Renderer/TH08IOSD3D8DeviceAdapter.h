@@ -32,6 +32,16 @@ NS_ASSUME_NONNULL_BEGIN
                count:(GLsizei)count
            primitive:(TH08IOSRendererPrimitive)primitive
              texture:(GLuint)texture;
+- (BOOL)setWorldTransform:(const TH08IOSD3D8::Matrix4 &)transform;
+- (BOOL)setViewTransform:(const TH08IOSD3D8::Matrix4 &)transform;
+- (BOOL)setProjectionTransform:(const TH08IOSD3D8::Matrix4 &)transform;
+- (BOOL)setTextureTransform:(const TH08IOSD3D8::Matrix4 &)transform;
+- (BOOL)setD3DViewport:(const TH08IOSD3D8::Viewport &)viewport;
+- (BOOL)drawCurrentFVFVertices:(const void *)vertices
+                           fvf:(uint32_t)fvf
+                         stride:(size_t)stride
+                          count:(size_t)count
+                      primitive:(TH08IOSRendererPrimitive)primitive;
 - (BOOL)setRenderState:(uint32_t)state value:(uint32_t)value;
 - (BOOL)setTextureStageState:(uint32_t)stage state:(uint32_t)state value:(uint32_t)value;
 @end
