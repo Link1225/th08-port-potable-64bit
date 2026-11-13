@@ -90,6 +90,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 
 @interface TH08IOSGLRenderer () {
     GLuint _program;
+    GLuint _vertexBuffer;
     GLint _samplerLocation;
     GLint _texturedLocation;
     BOOL _blendingEnabled;
@@ -114,6 +115,12 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     _program = CreateProgram();
     if (_program == 0)
         return nil;
+    glGenBuffers(1, &_vertexBuffer);
+    if (_vertexBuffer == 0) {
+        glDeleteProgram(_program);
+        _program = 0;
+        return nil;
+    }
 
     _samplerLocation = glGetUniformLocation(_program, "u_texture");
     _texturedLocation = glGetUniformLocation(_program, "u_textured");
@@ -128,8 +135,12 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 
 - (void)dealloc
 {
-    if (_program != 0 && [EAGLContext currentContext] != nil)
-        glDeleteProgram(_program);
+    if ([EAGLContext currentContext] != nil) {
+        if (_vertexBuffer != 0)
+            glDeleteBuffers(1, &_vertexBuffer);
+        if (_program != 0)
+            glDeleteProgram(_program);
+    }
 }
 
 - (BOOL)setViewportX:(GLint)x y:(GLint)y width:(GLsizei)width height:(GLsizei)height
@@ -232,7 +243,12 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
              texture:(GLuint)texture
 {
     if ([EAGLContext currentContext] == nil || !_hasViewport ||
-        vertices == NULL || count <= 0 || _program == 0)
+        vertices == NULL || count <= 0 || _program == 0 || _vertexBuffer == 0)
+        return NO;
+
+    const size_t vertexBytes = static_cast<size_t>(count) * sizeof(TH08IOSRendererVertex);
+    if (vertexBytes / sizeof(TH08IOSRendererVertex) != static_cast<size_t>(count) ||
+        vertexBytes > static_cast<size_t>(PTRDIFF_MAX))
         return NO;
 
     glUseProgram(_program);
@@ -242,6 +258,9 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     glUniform1i(_samplerLocation, 0);
     glUniform1f(_texturedLocation, texture != 0 ? 1.0f : 0.0f);
 
+    glBindBuffer(GL_ARRAY_BUFFER, _vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexBytes),
+                 vertices, GL_STREAM_DRAW);
     const GLsizei stride = static_cast<GLsizei>(sizeof(TH08IOSRendererVertex));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -256,6 +275,7 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     return glGetError() == GL_NO_ERROR;
 }
 
