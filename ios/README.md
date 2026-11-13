@@ -24,9 +24,10 @@ the bring-up target so both Simulator and device SDK builds validate the iOS
 graphics API integration.
 
 This is only a renderer foundation, not a Direct3D 8 replacement. It does not
-yet implement the original engine's matrix stack, transformed/lit vertices,
-alpha-test/fog semantics, render targets, readback, texture formats, or
-resource lifecycle. The game engine does not call it yet. The original
+yet implement the original engine's matrix stack and D3D8 transform/viewport
+conventions, transformed/lit vertex formats, fog semantics, texture-stage
+combiner behavior, render targets, readback, full texture formats, or resource
+lifecycle. The game engine does not call it yet. The original
 Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
 platform implementation.
 
