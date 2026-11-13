@@ -8,121 +8,6 @@
 @property(nonatomic, strong) EAGLContext *context;
 @property(nonatomic, strong) TH08IOSGLRenderer *renderer;
 
-- (void)testDepthCompareFunctionControlsDepthRejection
-{
-    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
-    XCTAssertNotEqual(target, 0u);
-    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
-    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
-    [self.renderer setDepthTestingEnabled:YES writeEnabled:YES];
-
-    TH08IOSRendererVertex vertices[6] = {
-        {-1.0f, -1.0f, 0.5f, 0.0f, 0.0f, 0, 255, 0, 255},
-        { 1.0f, -1.0f, 0.5f, 1.0f, 0.0f, 0, 255, 0, 255},
-        {-1.0f,  1.0f, 0.5f, 0.0f, 1.0f, 0, 255, 0, 255},
-        {-1.0f,  1.0f, 0.5f, 0.0f, 1.0f, 0, 255, 0, 255},
-        { 1.0f, -1.0f, 0.5f, 1.0f, 0.0f, 0, 255, 0, 255},
-        { 1.0f,  1.0f, 0.5f, 1.0f, 1.0f, 0, 255, 0, 255}
-    };
-    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_GREATER]);
-    XCTAssertTrue([self.renderer drawVertices:vertices count:6
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
-
-    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_ALWAYS]);
-    XCTAssertTrue([self.renderer drawVertices:vertices count:6
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
-
-    for (NSUInteger index = 0; index < 6; ++index) {
-        vertices[index].z = -0.5f;
-        vertices[index].red = 255;
-        vertices[index].green = 0;
-    }
-    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_NEVER]);
-    XCTAssertTrue([self.renderer drawVertices:vertices count:6
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
-
-    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(pixels);
-    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
-    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
-    XCTAssertLessThan(bytes[center], (uint8_t)20);
-    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
-    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
-    XCTAssertFalse([self.renderer setDepthCompareFunction:0xDEAD]);
-
-    [self.renderer deleteTexture:target];
-}
-
-- (void)testRendererStateMutationsRequireOwningContext
-{
-    EAGLContext *otherContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-    XCTAssertNotNil(otherContext);
-    XCTAssertTrue([EAGLContext setCurrentContext:otherContext]);
-
-    const GLfloat identity[16] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
-    XCTAssertFalse([self.renderer setBlendingEnabled:YES
-                                         sourceFactor:GL_SRC_ALPHA
-                                    destinationFactor:GL_ONE_MINUS_SRC_ALPHA]);
-    XCTAssertFalse([self.renderer setTextureMinificationFilter:GL_NEAREST
-                                            magnificationFilter:GL_NEAREST
-                                                          wrapS:GL_CLAMP_TO_EDGE
-                                                          wrapT:GL_CLAMP_TO_EDGE]);
-    XCTAssertFalse([self.renderer setTransformMatrix:identity]);
-    XCTAssertFalse([self.renderer setAlphaTestEnabled:YES
-                                       compareFunction:GL_ALWAYS
-                                             reference:0.5f]);
-    XCTAssertFalse([self.renderer setDepthCompareFunction:GL_ALWAYS]);
-
-    XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
-    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_LESS]);
-}
-
-
-- (void)testScissorClipsDrawsAndClearIgnoresScissor
-{
-    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
-    XCTAssertNotEqual(target, 0u);
-    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
-    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
-    XCTAssertTrue([self.renderer setScissorEnabled:YES x:2 y:2 width:3 height:3]);
-    XCTAssertFalse([self.renderer setScissorEnabled:YES x:0 y:0 width:0 height:3]);
-
-    TH08IOSRendererVertex vertices[6] = {
-        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255},
-        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
-        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
-        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
-        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
-        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 0, 0, 255}
-    };
-    XCTAssertTrue([self.renderer drawVertices:vertices count:6
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
-    NSData *clippedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(clippedPixels);
-    const uint8_t *clipped = (const uint8_t *)clippedPixels.bytes;
-    const NSUInteger inside = (NSUInteger)(3u * 8u + 3u) * 4u;
-    const NSUInteger outside = (NSUInteger)(3u * 8u + 6u) * 4u;
-    XCTAssertGreaterThan(clipped[inside], (uint8_t)200);
-    XCTAssertLessThan(clipped[outside], (uint8_t)20);
-
-    [self.renderer clearRed:0.0f green:0.0f blue:1.0f alpha:1.0f depth:1.0f];
-    NSData *clearedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(clearedPixels);
-    const uint8_t *cleared = (const uint8_t *)clearedPixels.bytes;
-    XCTAssertLessThan(cleared[outside], (uint8_t)20);
-    XCTAssertGreaterThan(cleared[outside + 2], (uint8_t)200);
-    XCTAssertTrue([self.renderer setScissorEnabled:NO x:0 y:0 width:0 height:0]);
-
-    [self.renderer deleteTexture:target];
-}
-
 @end
 
 @implementation TH08IOSGLRendererTests
@@ -432,6 +317,122 @@
     XCTAssertEqual(viewport[1], 3);
     XCTAssertEqual(viewport[2], 7);
     XCTAssertEqual(viewport[3], 6);
+
+    [self.renderer deleteTexture:target];
+}
+
+
+- (void)testDepthCompareFunctionControlsDepthRejection
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    [self.renderer setDepthTestingEnabled:YES writeEnabled:YES];
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.5f, 0.0f, 0.0f, 0, 255, 0, 255},
+        { 1.0f, -1.0f, 0.5f, 1.0f, 0.0f, 0, 255, 0, 255},
+        {-1.0f,  1.0f, 0.5f, 0.0f, 1.0f, 0, 255, 0, 255},
+        {-1.0f,  1.0f, 0.5f, 0.0f, 1.0f, 0, 255, 0, 255},
+        { 1.0f, -1.0f, 0.5f, 1.0f, 0.0f, 0, 255, 0, 255},
+        { 1.0f,  1.0f, 0.5f, 1.0f, 1.0f, 0, 255, 0, 255}
+    };
+    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_GREATER]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_ALWAYS]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    for (NSUInteger index = 0; index < 6; ++index) {
+        vertices[index].z = -0.5f;
+        vertices[index].red = 255;
+        vertices[index].green = 0;
+    }
+    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_NEVER]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertLessThan(bytes[center], (uint8_t)20);
+    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+    XCTAssertFalse([self.renderer setDepthCompareFunction:0xDEAD]);
+
+    [self.renderer deleteTexture:target];
+}
+
+- (void)testRendererStateMutationsRequireOwningContext
+{
+    EAGLContext *otherContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    XCTAssertNotNil(otherContext);
+    XCTAssertTrue([EAGLContext setCurrentContext:otherContext]);
+
+    const GLfloat identity[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    XCTAssertFalse([self.renderer setBlendingEnabled:YES
+                                         sourceFactor:GL_SRC_ALPHA
+                                    destinationFactor:GL_ONE_MINUS_SRC_ALPHA]);
+    XCTAssertFalse([self.renderer setTextureMinificationFilter:GL_NEAREST
+                                            magnificationFilter:GL_NEAREST
+                                                          wrapS:GL_CLAMP_TO_EDGE
+                                                          wrapT:GL_CLAMP_TO_EDGE]);
+    XCTAssertFalse([self.renderer setTransformMatrix:identity]);
+    XCTAssertFalse([self.renderer setAlphaTestEnabled:YES
+                                       compareFunction:GL_ALWAYS
+                                             reference:0.5f]);
+    XCTAssertFalse([self.renderer setDepthCompareFunction:GL_ALWAYS]);
+
+    XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
+    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_LESS]);
+}
+
+
+- (void)testScissorClipsDrawsAndClearIgnoresScissor
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    XCTAssertTrue([self.renderer setScissorEnabled:YES x:2 y:2 width:3 height:3]);
+    XCTAssertFalse([self.renderer setScissorEnabled:YES x:0 y:0 width:0 height:3]);
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 0, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *clippedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(clippedPixels);
+    const uint8_t *clipped = (const uint8_t *)clippedPixels.bytes;
+    const NSUInteger inside = (NSUInteger)(3u * 8u + 3u) * 4u;
+    const NSUInteger outside = (NSUInteger)(3u * 8u + 6u) * 4u;
+    XCTAssertGreaterThan(clipped[inside], (uint8_t)200);
+    XCTAssertLessThan(clipped[outside], (uint8_t)20);
+
+    [self.renderer clearRed:0.0f green:0.0f blue:1.0f alpha:1.0f depth:1.0f];
+    NSData *clearedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(clearedPixels);
+    const uint8_t *cleared = (const uint8_t *)clearedPixels.bytes;
+    XCTAssertLessThan(cleared[outside], (uint8_t)20);
+    XCTAssertGreaterThan(cleared[outside + 2], (uint8_t)200);
+    XCTAssertTrue([self.renderer setScissorEnabled:NO x:0 y:0 width:0 height:0]);
 
     [self.renderer deleteTexture:target];
 }
