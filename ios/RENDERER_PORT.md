@@ -45,46 +45,35 @@ made with a different current context. It provides:
   restoration of the previous pack alignment. Returned rows use OpenGL's
   bottom-to-top order;
 - a GLKit-backed view in the bring-up app that creates the ES2 renderer and
-  submits a small smoke-test triangle to the view's drawable framebuffer.
-- a platform-neutral D3D8 FVF layout decoder that validates XYZ/XYZRHW
-  layouts, accounts for optional normal/point-size/diffuse/specular fields and
-  up to eight texture-coordinate sets, and decodes the first set and D3DCOLOR
-  without unaligned loads;
-- a fail-closed mapping table for the D3DTOP subset, texture arguments without
-  complement/alpha-replicate modifiers, all eight D3D comparison functions,
-  and the eleven standard D3D blend factors supported by ES2.
-- D3D row-vector world/view/projection transform helpers, including viewport
-  mapping, view-space fog-coordinate capture, pre-transformed XYZRHW reciprocal-W
-  handling, and the Linux adapter's texture-matrix coordinate convention.
-- a conversion stage that combines FVF decoding, world/view/projection or
-  pre-transformed position handling, viewport/fog math, texture transforms,
-  vertex color, and the optional additive D3D specular color into one ES2-ready\n  intermediate vertex.
+  submits a small smoke-test triangle to the view's drawable framebuffer;
+- a platform-neutral D3D8 FVF layout decoder, state mapping, transform helpers,
+  and combined vertex conversion for the currently supported ES2 subset.
 
-The XCTest suite now exercises offscreen readback and switching, texture
-sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
-scissor and clear behavior, color-write masks, blend equations, texture-factor
-combining, linear fog, and cleanup of all five enabled vertex attributes after
-a draw. It also checks FVF offsets/decoding, transformed vertex layout,
-additional texture-coordinate set skipping, diffuse/specular color decoding,\nunsupported FVF rejection, and
-the supported D3D state mappings, world/view/projection and viewport
-math, XYZRHW reciprocal-W handling, texture-matrix coordinates, sampler
-filter/address modes, ES2-supported blend operations, and combined FVF-to-ES2
-vertex conversion. These are unit tests, not a parity test against the Linux
-adapter's deterministic output.
+The XCTest suite covers render-target lifecycle, texture upload/sampling,
+transform and alpha behavior, blend/depth/scissor state, fog, texture-stage
+combining, FVF layout/decoding, D3D8 state mapping, and combined vertex
+conversion. The latest additions decode the D3DTA complement and alpha-replicate
+modifier bits into an explicit argument-state structure. The older
+`MapTextureArgument` helper intentionally remains fail-closed when modifiers
+are present because the fragment shader has not yet consumed those modifier
+flags. Dedicated XCTest cases verify selector decoding, each modifier, both
+modifiers together, reserved-bit rejection, and the legacy helper's behavior.
 
-This foundation is intentionally not represented as a Direct3D 8 replacement.
-No game-engine call site uses it. CI compile/test success establishes that the
-bring-up target and covered renderer operations work in the simulator
-environment; it does not establish rendering parity or physical-device
-performance.
+These tests are unit tests, not a parity test against the Linux adapter's
+deterministic output. This foundation is intentionally not represented as a
+Direct3D 8 replacement. No game-engine call site uses it. CI compile/test
+success establishes that the bring-up target and covered renderer operations
+work in the simulator environment; it does not establish rendering parity or
+physical-device performance.
 
 ## Current next blocker
 
 The iOS app remains a data-import and keyboard bring-up shell with a renderer
 smoke preview. The original engine still has no iOS frame loop, full renderer
 adapter, audio integration, or game target. The immediate renderer task is to
-build a D3D8-facing device adapter over the ES2 renderer. It must translate the
-existing device calls and state arrays, decode the engine's FVF vertex layouts
+connect the decoded D3D8 argument modifiers to shader evaluation, then build a
+D3D8-facing device adapter over the ES2 renderer. It must translate the existing
+device calls and state arrays, decode the engine's FVF vertex layouts
 (including pre-transformed XYZRHW vertices), reproduce the Linux adapter's
 position/viewport and texture-transform conventions, and cover the original
 texture operations, argument modifiers, fog and render-target semantics.

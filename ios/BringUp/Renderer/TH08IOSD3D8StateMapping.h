@@ -26,6 +26,17 @@ enum TextureArgument {
     TextureArgumentFactor = 2
 };
 
+enum TextureArgumentModifier {
+    TextureArgumentModifierNone = 0,
+    TextureArgumentModifierComplement = 1u << 0,
+    TextureArgumentModifierAlphaReplicate = 1u << 1
+};
+
+struct TextureArgumentState {
+    TextureArgument argument;
+    uint8_t modifiers;
+};
+
 static inline bool MapTextureOperation(uint32_t d3dOperation, TextureOperation *output)
 {
     if (output == NULL)
@@ -43,16 +54,41 @@ static inline bool MapTextureOperation(uint32_t d3dOperation, TextureOperation *
     }
 }
 
+// D3DTA argument selectors occupy the low nibble. The two modifiers are
+// independent bits and may be combined; reserved high bits fail closed.
+static inline bool MapTextureArgumentState(uint32_t d3dArgument,
+                                           TextureArgumentState *output)
+{
+    if (output == NULL || (d3dArgument & ~0x3Fu) != 0u)
+        return false;
+
+    TextureArgumentState result = {};
+    switch (d3dArgument & 0x0Fu) {
+    case 0u: result.argument = TextureArgumentDiffuse; break; // D3DTA_DIFFUSE
+    case 2u: result.argument = TextureArgumentTexture; break; // D3DTA_TEXTURE
+    case 3u: result.argument = TextureArgumentFactor; break; // D3DTA_TFACTOR
+    default: return false; // CURRENT/SPECULAR/TEMP require separate stage semantics.
+    }
+
+    if ((d3dArgument & 0x10u) != 0u)
+        result.modifiers |= TextureArgumentModifierComplement;
+    if ((d3dArgument & 0x20u) != 0u)
+        result.modifiers |= TextureArgumentModifierAlphaReplicate;
+    *output = result;
+    return true;
+}
+
+// Convenience mapping for call sites that cannot yet consume modifiers.
 static inline bool MapTextureArgument(uint32_t d3dArgument, TextureArgument *output)
 {
-    if (output == NULL || (d3dArgument & ~0x0Fu) != 0u)
-        return false; // Complement/alpha-replicate modifiers need shader support.
-    switch (d3dArgument & 0x0Fu) {
-    case 0u: *output = TextureArgumentDiffuse; return true; // D3DTA_DIFFUSE
-    case 2u: *output = TextureArgumentTexture; return true; // D3DTA_TEXTURE
-    case 3u: *output = TextureArgumentFactor; return true; // D3DTA_TFACTOR
-    default: return false; // CURRENT/SPECULAR/TEMP are not silently approximated.
-    }
+    if (output == NULL)
+        return false;
+    TextureArgumentState state = {};
+    if (!MapTextureArgumentState(d3dArgument, &state) ||
+        state.modifiers != TextureArgumentModifierNone)
+        return false;
+    *output = state.argument;
+    return true;
 }
 
 static inline bool MapCompareFunction(uint32_t d3dFunction, GLenum *output)
