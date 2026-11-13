@@ -14,6 +14,7 @@ typedef struct TH08IOSRendererVertex {
     GLubyte green;
     GLubyte blue;
     GLubyte alpha;
+    GLfloat fogCoordinate;
 } TH08IOSRendererVertex;
 
 typedef NS_ENUM(GLint, TH08IOSRendererTextureOperation) {
@@ -63,6 +64,7 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
                       alphaArgument1:(TH08IOSRendererTextureArgument)alphaArgument1
                       alphaArgument2:(TH08IOSRendererTextureArgument)alphaArgument2;
 - (void)setTextureFactorRed:(GLubyte)red green:(GLubyte)green blue:(GLubyte)blue alpha:(GLubyte)alpha;
+- (BOOL)setFogEnabled:(BOOL)enabled colorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue start:(GLfloat)start end:(GLfloat)end;
 // ES2 non-mipmap sampling modes. Defaults are linear filtering and clamp-to-edge.
 - (BOOL)setTextureMinificationFilter:(GLenum)minificationFilter
                     magnificationFilter:(GLenum)magnificationFilter

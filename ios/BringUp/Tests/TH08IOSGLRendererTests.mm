@@ -546,4 +546,31 @@
     [self.renderer deleteTexture:target];
 }
 
+- (void)testLinearFogUsesPerVertexFogCoordinate
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    XCTAssertTrue([self.renderer setFogEnabled:YES colorRed:0.25f green:0.5f blue:0.75f start:0.0f end:0.5f]);
+    XCTAssertFalse([self.renderer setFogEnabled:YES colorRed:0.0f green:0.0f blue:0.0f start:1.0f end:1.0f]);
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255, 1.0f},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255, 1.0f},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 255, 255, 255, 1.0f}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3 primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertEqualWithAccuracy(bytes[center], 64, 4);
+    XCTAssertEqualWithAccuracy(bytes[center + 1], 128, 4);
+    XCTAssertEqualWithAccuracy(bytes[center + 2], 191, 4);
+    XCTAssertEqual(bytes[center + 3], (uint8_t)255);
+    [self.renderer deleteTexture:target];
+}
+
+
 @end

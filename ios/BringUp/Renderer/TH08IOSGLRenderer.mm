@@ -21,12 +21,15 @@ static const char *kVertexShader =
     "uniform mat4 u_transform;\n"
     "attribute vec2 a_texcoord;\n"
     "attribute vec4 a_color;\n"
+    "attribute float a_fog_coordinate;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
+    "varying float v_fog_coordinate;\n"
     "void main() {\n"
     "  gl_Position = u_transform * vec4(a_position, 1.0);\n"
     "  v_texcoord = a_texcoord;\n"
     "  v_color = a_color;\n"
+    "  v_fog_coordinate = a_fog_coordinate;\n"
     "}\n";
 
 static const char *kFragmentShader =
@@ -43,8 +46,13 @@ static const char *kFragmentShader =
     "uniform float u_alpha_test_enabled;\n"
     "uniform int u_alpha_test_function;\n"
     "uniform float u_alpha_test_reference;\n"
+    "uniform float u_fog_enabled;\n"
+    "uniform vec4 u_fog_color;\n"
+    "uniform float u_fog_start;\n"
+    "uniform float u_fog_end;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
+    "varying float v_fog_coordinate;\n"
     "vec4 selectArgument(int argument, vec4 textureValue) {\n"
     "  if (argument == 0) return textureValue;\n"
     "  if (argument == 1) return v_color;\n"
@@ -78,6 +86,10 @@ static const char *kFragmentShader =
     "  vec4 alphaB = selectArgument(u_alpha_argument2, texel);\n"
     "  vec4 result = vec4(applyColorOperation(u_color_operation, colorA.rgb, colorB.rgb),\n"
     "                     applyAlphaOperation(u_alpha_operation, alphaA.a, alphaB.a));\n"
+    "  if (u_fog_enabled > 0.5) {\n"
+    "    float fogAmount = clamp((u_fog_end - v_fog_coordinate) / (u_fog_end - u_fog_start), 0.0, 1.0);\n"
+    "    result.rgb = mix(u_fog_color.rgb, result.rgb, fogAmount);\n"
+    "  }\n"
     "  if (u_alpha_test_enabled > 0.5) {\n"
     "    float a = result.a;\n"
     "    bool pass = true;\n"
@@ -127,6 +139,7 @@ GLuint CreateProgram()
         glBindAttribLocation(program, 0, "a_position");
         glBindAttribLocation(program, 1, "a_texcoord");
         glBindAttribLocation(program, 2, "a_color");
+    glBindAttribLocation(program, 3, "a_fog_coordinate");
         glLinkProgram(program);
         GLint linked = GL_FALSE;
         glGetProgramiv(program, GL_LINK_STATUS, &linked);
@@ -229,6 +242,14 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLint _alphaOperationLocation;
     GLint _alphaArgument1Location;
     GLint _alphaArgument2Location;
+    GLint _fogEnabledLocation;
+    GLint _fogColorLocation;
+    GLint _fogStartLocation;
+    GLint _fogEndLocation;
+    BOOL _fogEnabled;
+    GLfloat _fogColor[4];
+    GLfloat _fogStart;
+    GLfloat _fogEnd;
     GLint _textureFactor[4];
     GLint _colorOperation;
     GLint _colorArgument1;
@@ -297,6 +318,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaOperationLocation = glGetUniformLocation(_program, "u_alpha_operation");
     _alphaArgument1Location = glGetUniformLocation(_program, "u_alpha_argument1");
     _alphaArgument2Location = glGetUniformLocation(_program, "u_alpha_argument2");
+    _fogEnabledLocation = glGetUniformLocation(_program, "u_fog_enabled");
+    _fogColorLocation = glGetUniformLocation(_program, "u_fog_color");
+    _fogStartLocation = glGetUniformLocation(_program, "u_fog_start");
+    _fogEndLocation = glGetUniformLocation(_program, "u_fog_end");
     for (NSUInteger index = 0; index < 16; ++index)
         _transform[index] = (index % 5) == 0 ? 1.0f : 0.0f;
     _alphaTestEnabled = NO;
@@ -309,6 +334,11 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaOperation = TH08IOSRendererTextureOperationModulate;
     _alphaArgument1 = TH08IOSRendererTextureArgumentTexture;
     _alphaArgument2 = TH08IOSRendererTextureArgumentDiffuse;
+    _fogEnabled = NO;
+    _fogColor[0] = _fogColor[1] = _fogColor[2] = 0.0f;
+    _fogColor[3] = 1.0f;
+    _fogStart = 0.0f;
+    _fogEnd = 1.0f;
     _blendingEnabled = NO;
     _depthTestingEnabled = NO;
     _depthCompareFunction = GL_LESS;
@@ -424,6 +454,22 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _textureFactor[1] = green;
     _textureFactor[2] = blue;
     _textureFactor[3] = alpha;
+}
+
+- (BOOL)setFogEnabled:(BOOL)enabled colorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue start:(GLfloat)start end:(GLfloat)end
+{
+    if ([EAGLContext currentContext] != _context ||
+        !isfinite(red) || !isfinite(green) || !isfinite(blue) ||
+        !isfinite(start) || !isfinite(end) || end <= start)
+        return NO;
+    _fogEnabled = enabled;
+    _fogColor[0] = red < 0.0f ? 0.0f : (red > 1.0f ? 1.0f : red);
+    _fogColor[1] = green < 0.0f ? 0.0f : (green > 1.0f ? 1.0f : green);
+    _fogColor[2] = blue < 0.0f ? 0.0f : (blue > 1.0f ? 1.0f : blue);
+    _fogColor[3] = 1.0f;
+    _fogStart = start;
+    _fogEnd = end;
+    return YES;
 }
 
 - (BOOL)setBlendEquation:(GLenum)equation
@@ -800,6 +846,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glUniform1i(_alphaOperationLocation, _alphaOperation);
     glUniform1i(_alphaArgument1Location, _alphaArgument1);
     glUniform1i(_alphaArgument2Location, _alphaArgument2);
+    glUniform1f(_fogEnabledLocation, _fogEnabled ? 1.0f : 0.0f);
+    glUniform4f(_fogColorLocation, _fogColor[0], _fogColor[1], _fogColor[2], _fogColor[3]);
+    glUniform1f(_fogStartLocation, _fogStart);
+    glUniform1f(_fogEndLocation, _fogEnd);
     [self applyDrawState];
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -821,12 +871,15 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(3);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, x)));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, u)));
     glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, red)));
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, stride,
+                          reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, fogCoordinate)));
     glDrawArrays(static_cast<GLenum>(primitive), 0, count);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
