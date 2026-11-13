@@ -1015,8 +1015,12 @@ LPBYTE FileSystem::OpenFile(LPCSTR path, i32 *fileSize, BOOL isExternalResource)
     const char *entryname;
     DWORD size;
     LPBYTE data;
-    HANDLE handle;
     i32 unused = -1;
+#ifdef TH08_MODERN_IOS
+    TH08IOSFileHandle file;
+#else
+    HANDLE handle;
+#endif
 
 #ifdef TH08_MODERN_PORT
     modern::LogArchiveRequest(path);
@@ -1026,56 +1030,64 @@ LPBYTE FileSystem::OpenFile(LPCSTR path, i32 *fileSize, BOOL isExternalResource)
 
     if (!isExternalResource)
     {
-        entryname = strrchr(path, '\\');
+        entryname = strrchr(path, '\\\\');
         if (entryname == NULL)
-        {
             entryname = path;
-        }
         else
-        {
             entryname = entryname + 1;
-        }
         entryname = strrchr(entryname, '/');
-        if (entryname == (char *)0x0)
-        {
+        if (entryname == NULL)
             entryname = path;
-        }
         else
-        {
             entryname = entryname + 1;
-        }
+
         size = g_PbgArchive.GetEntryDecompressedSize(entryname);
         if (fileSize != NULL)
-        {
             *fileSize = size;
-        }
         if (size == 0)
         {
-            g_GameErrorContext.Fatal("error : %s is not found in arcfile.\r\n", entryname);
+            g_GameErrorContext.Fatal("error : %s is not found in arcfile.\\r\\n", entryname);
             goto error;
         }
-        if (size != 0)
-        {
-            utils::DebugPrint("%s Decode ... \r\n", entryname);
 
-            data = (LPBYTE)g_ZunMemory.Alloc(size, path);
-            if (data == NULL)
-            {
-                goto error;
-            }
-            g_PbgArchive.ReadDecompressEntry(entryname, data);
-            data = TryDecryptFromTable(data, fileSize, size);
-            goto done;
-        }
+        utils::DebugPrint("%s Decode ... \\r\\n", entryname);
+        data = (LPBYTE)g_ZunMemory.Alloc(size, path);
+        if (data == NULL)
+            goto error;
+        g_PbgArchive.ReadDecompressEntry(entryname, data);
+        data = TryDecryptFromTable(data, fileSize, size);
+        goto done;
     }
 
-    utils::DebugPrint("%s Load ... \r\n", path);
-
+    utils::DebugPrint("%s Load ... \\r\\n", path);
+#ifdef TH08_MODERN_IOS
+    if (!file.Open(path, 'r'))
+    {
+        utils::DebugPrint("error : %s is not found.\\r\\n", path);
+        goto error;
+    }
+    size = file.GetSize();
+    data = (LPBYTE)g_ZunMemory.Alloc(size, path);
+    if (data == NULL)
+    {
+        file.Close();
+        utils::DebugPrint("error : %s allocation error.\\r\\n", path);
+        goto error;
+    }
+    if (file.Read(data, size) != size)
+    {
+        file.Close();
+        g_ZunMemory.Free(data);
+        utils::DebugPrint("error : %s read error.\\r\\n", path);
+        goto error;
+    }
+    file.Close();
+#else
     handle = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING,
                          FILE_FLAG_SEQUENTIAL_SCAN | FILE_ATTRIBUTE_NORMAL, NULL);
     if (handle == INVALID_HANDLE_VALUE)
     {
-        utils::DebugPrint("error : %s is not found.\r\n", path);
+        utils::DebugPrint("error : %s is not found.\\r\\n", path);
         goto error;
     }
 
@@ -1083,18 +1095,16 @@ LPBYTE FileSystem::OpenFile(LPCSTR path, i32 *fileSize, BOOL isExternalResource)
     data = (LPBYTE)g_ZunMemory.Alloc(size, path);
     if (data == NULL)
     {
-        utils::DebugPrint("error : %s allocation error.\r\n", path);
+        utils::DebugPrint("error : %s allocation error.\\r\\n", path);
         CloseHandle(handle);
         goto error;
     }
 
     ReadFile(handle, data, size, &size, NULL);
-    if (fileSize != NULL)
-    {
-        *fileSize = size;
-    }
-
     CloseHandle(handle);
+#endif
+    if (fileSize != NULL)
+        *fileSize = size;
     data = TryDecryptFromTable(data, fileSize, size);
 
 done:
@@ -1109,35 +1119,50 @@ error:
 BOOL FileSystem::CheckIfFileAlreadyExists(LPCSTR path)
 {
     g_Supervisor.EnterCriticalSectionWrapper(2);
-
+#ifdef TH08_MODERN_IOS
+    TH08IOSFileHandle file;
+    const BOOL exists = file.Open(path, 'r') ? TRUE : FALSE;
+    file.Close();
+#else
     HANDLE handle = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING,
                                 FILE_FLAG_SEQUENTIAL_SCAN | FILE_ATTRIBUTE_NORMAL, NULL);
-    if (handle != INVALID_HANDLE_VALUE)
-    {
+    const BOOL exists = handle != INVALID_HANDLE_VALUE;
+    if (exists)
         CloseHandle(handle);
-        g_Supervisor.LeaveCriticalSectionWrapper(2);
-        return TRUE;
-    }
-
+#endif
     g_Supervisor.LeaveCriticalSectionWrapper(2);
-    return FALSE;
+    return exists;
 }
 
 #pragma var_order(numBytesWritten, handle, buffer)
 int FileSystem::WriteDataToFile(LPCSTR path, LPVOID data, size_t size)
 {
+    g_Supervisor.EnterCriticalSectionWrapper(2);
+#ifdef TH08_MODERN_IOS
+    TH08IOSFileHandle file;
+    if (!file.Open(path, 'w'))
+    {
+        utils::DebugPrint("error : %s write error\\r\\n", path);
+        g_Supervisor.LeaveCriticalSectionWrapper(2);
+        return -1;
+    }
+    if (!file.Write(data, size))
+    {
+        file.Close();
+        utils::DebugPrint("error : %s write error\\r\\n", path);
+        g_Supervisor.LeaveCriticalSectionWrapper(2);
+        return -2;
+    }
+    file.Close();
+#else
     LPSTR buffer;
     DWORD numBytesWritten;
-
-    g_Supervisor.EnterCriticalSectionWrapper(2);
-
     HANDLE handle = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (handle == INVALID_HANDLE_VALUE)
     {
         FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
                        NULL, GetLastError(), LANG_USER_DEFAULT, (LPSTR)&buffer, 0, NULL);
-
-        utils::DebugPrint("error : %s write error %s\r\n", path, buffer);
+        utils::DebugPrint("error : %s write error %s\\r\\n", path, buffer);
         LocalFree(buffer);
         g_Supervisor.LeaveCriticalSectionWrapper(2);
         return -1;
@@ -1147,13 +1172,13 @@ int FileSystem::WriteDataToFile(LPCSTR path, LPVOID data, size_t size)
     if (size != numBytesWritten)
     {
         CloseHandle(handle);
-        utils::DebugPrint("error : %s write error\r\n", path);
+        utils::DebugPrint("error : %s write error\\r\\n", path);
         g_Supervisor.LeaveCriticalSectionWrapper(2);
         return -2;
     }
-
     CloseHandle(handle);
-    utils::DebugPrint("%s write ...\r\n", path);
+#endif
+    utils::DebugPrint("%s write ...\\r\\n", path);
     g_Supervisor.LeaveCriticalSectionWrapper(2);
     return 0;
 }
