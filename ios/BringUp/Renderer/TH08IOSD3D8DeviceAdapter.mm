@@ -3,10 +3,13 @@
 #include <math.h>
 #include <string.h>
 
+#import <Foundation/Foundation.h>
+
 @interface TH08IOSD3D8DeviceAdapter () {
     __weak TH08IOSGLRenderer *_renderer;
     uint32_t _renderStates[256];
     uint32_t _textureStates[32];
+    NSMutableSet<NSNumber *> *_ownedTextures;
 }
 @end
 
@@ -17,6 +20,7 @@
     self = [super init];
     if (self == nil) return nil;
     _renderer = renderer;
+    _ownedTextures = [[NSMutableSet alloc] init];
     _renderStates[19] = 5u;
     _renderStates[20] = 6u;
     _renderStates[23] = 4u;
@@ -38,6 +42,44 @@
     _textureStates[17] = 2u;
     if (![self applyRenderStates] || ![self applyTextureStageStates]) return nil;
     return self;
+}
+
+- (GLuint)createTextureWithRGBA8Pixels:(const void *)pixels
+                                  width:(GLsizei)width
+                                 height:(GLsizei)height
+                               rowBytes:(size_t)rowBytes
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || pixels == NULL || width <= 0 || height <= 0)
+        return 0u;
+    const GLuint texture = [renderer createTextureWithRGBA8Pixels:pixels
+                                                            width:width
+                                                           height:height
+                                                         rowBytes:rowBytes];
+    if (texture == 0u)
+        return 0u;
+    NSNumber *key = [NSNumber numberWithUnsignedInt:texture];
+    if ([_ownedTextures containsObject:key]) {
+        [renderer deleteTexture:texture];
+        return 0u;
+    }
+    [_ownedTextures addObject:key];
+    return texture;
+}
+
+- (BOOL)deleteTexture:(GLuint)texture
+{
+    if (texture == 0u)
+        return NO;
+    NSNumber *key = [NSNumber numberWithUnsignedInt:texture];
+    if (![_ownedTextures containsObject:key])
+        return NO;
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil)
+        return NO;
+    [renderer deleteTexture:texture];
+    [_ownedTextures removeObject:key];
+    return YES;
 }
 
 - (BOOL)applyRenderStates
