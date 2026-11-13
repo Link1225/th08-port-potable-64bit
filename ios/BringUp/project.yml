@@ -68,11 +68,14 @@ targets:
           python3 "${SRCROOT}/../../scripts/generate_i18n.py" \
             -o "${OUTPUT_DIR}/i18n.hpp" --shift-jis \
             "${SRCROOT}/../../config/i18n.csv"
+        outputFiles:
+          - "$(DERIVED_FILE_DIR)/generated/i18n.hpp"
     settings:
       base:
         PRODUCT_NAME: TH08EngineCore
         SKIP_INSTALL: YES
         CLANG_CXX_LANGUAGE_STANDARD: gnu++98
+        GCC_WARN_ABOUT_RETURN_TYPE: NO
         GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) TH08_MODERN_PORT=1 TH08_MODERN_IOS=1 TH08_PORTABLE_NATIVE_LAYOUT=1 WIN32_LEAN_AND_MEAN=1"
         HEADER_SEARCH_PATHS: "$(inherited) $(SRCROOT)/../../src $(SRCROOT)/../../src/modern/linux/include $(SRCROOT)/TH08BringUp $(DERIVED_FILE_DIR)/generated"
         OTHER_CPLUSPLUSFLAGS: "$(inherited) -include $(SRCROOT)/../Engine/ios_compat.hpp -Wno-unknown-pragmas"
