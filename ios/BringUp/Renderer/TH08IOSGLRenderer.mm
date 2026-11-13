@@ -884,6 +884,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+    glDisableVertexAttribArray(3);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     return glGetError() == GL_NO_ERROR;
 }

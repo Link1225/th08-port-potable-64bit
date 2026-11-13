@@ -573,4 +573,29 @@
 }
 
 
+
+- (void)testDrawDisablesEveryVertexAttributeAfterSubmission
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255, 0.0f},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255, 0.0f},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 255, 255, 255, 0.0f}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                    primitive:TH08IOSRendererPrimitiveTriangles
+                                      texture:0]);
+
+    for (GLuint index = 0; index < 4; ++index) {
+        GLint enabled = GL_TRUE;
+        glGetVertexAttribiv(index, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+        XCTAssertEqual(enabled, GL_FALSE, @"attribute %u leaked enabled state", index);
+    }
+
+    [self.renderer deleteTexture:target];
+}
 @end
