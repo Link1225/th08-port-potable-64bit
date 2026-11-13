@@ -71,6 +71,10 @@ struct DecodedVertex {
     uint8_t blue;
     uint8_t alpha;
     float fogCoordinate;
+    uint8_t specularRed;
+    uint8_t specularGreen;
+    uint8_t specularBlue;
+    uint8_t specularAlpha;
 };
 
 static inline uint8_t TextureCoordinateComponents(uint32_t fvf, uint32_t index)
@@ -175,6 +179,7 @@ static inline LayoutError DecodeVertex(const VertexLayout &layout,
     decoded.z = ReadFloat(bytes + layout.positionOffset + 2u * sizeof(float));
     decoded.rhw = layout.transformed ? ReadFloat(bytes + layout.positionOffset + 3u * sizeof(float)) : 1.0f;
     decoded.red = decoded.green = decoded.blue = decoded.alpha = 255u;
+    decoded.specularRed = decoded.specularGreen = decoded.specularBlue = decoded.specularAlpha = 0u;
     if (layout.diffuseOffset != SIZE_MAX) {
         uint32_t color;
         memcpy(&color, bytes + layout.diffuseOffset, sizeof(color));
@@ -183,6 +188,14 @@ static inline LayoutError DecodeVertex(const VertexLayout &layout,
         decoded.green = static_cast<uint8_t>((color >> 8u) & 0xFFu);
         decoded.red = static_cast<uint8_t>((color >> 16u) & 0xFFu);
         decoded.alpha = static_cast<uint8_t>((color >> 24u) & 0xFFu);
+    }
+    if (layout.specularOffset != SIZE_MAX) {
+        uint32_t color;
+        memcpy(&color, bytes + layout.specularOffset, sizeof(color));
+        decoded.specularBlue = static_cast<uint8_t>(color & 0xFFu);
+        decoded.specularGreen = static_cast<uint8_t>((color >> 8u) & 0xFFu);
+        decoded.specularRed = static_cast<uint8_t>((color >> 16u) & 0xFFu);
+        decoded.specularAlpha = static_cast<uint8_t>((color >> 24u) & 0xFFu);
     }
     if (layout.textureCoordinateCount != 0u) {
         const uint8_t *uv = bytes + layout.textureCoordinateOffset;

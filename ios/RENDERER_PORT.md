@@ -58,14 +58,14 @@ made with a different current context. It provides:
   handling, and the Linux adapter's texture-matrix coordinate convention.
 - a conversion stage that combines FVF decoding, world/view/projection or
   pre-transformed position handling, viewport/fog math, texture transforms,
-  and vertex color into one ES2-ready intermediate vertex.
+  vertex color, and the optional additive D3D specular color into one ES2-ready\n  intermediate vertex.
 
 The XCTest suite now exercises offscreen readback and switching, texture
 sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
 scissor and clear behavior, color-write masks, blend equations, texture-factor
-combining, linear fog, and cleanup of all four enabled vertex attributes after
+combining, linear fog, and cleanup of all five enabled vertex attributes after
 a draw. It also checks FVF offsets/decoding, transformed vertex layout,
-additional texture-coordinate set skipping, unsupported FVF rejection, and
+additional texture-coordinate set skipping, diffuse/specular color decoding,\nunsupported FVF rejection, and
 the supported D3D state mappings, world/view/projection and viewport
 math, XYZRHW reciprocal-W handling, texture-matrix coordinates, sampler
 filter/address modes, ES2-supported blend operations, and combined FVF-to-ES2

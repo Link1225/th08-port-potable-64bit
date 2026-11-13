@@ -15,6 +15,10 @@ typedef struct TH08IOSRendererVertex {
     GLubyte blue;
     GLubyte alpha;
     GLfloat fogCoordinate;
+    GLubyte specularRed;
+    GLubyte specularGreen;
+    GLubyte specularBlue;
+    GLubyte specularAlpha;
 } TH08IOSRendererVertex;
 
 typedef NS_ENUM(GLint, TH08IOSRendererTextureOperation) {

@@ -871,7 +871,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
-    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(3);\n    glEnableVertexAttribArray(4);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, x)));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
@@ -884,7 +884,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
-    glDisableVertexAttribArray(3);
+    glDisableVertexAttribArray(3);\n    glDisableVertexAttribArray(4);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     return glGetError() == GL_NO_ERROR;
 }

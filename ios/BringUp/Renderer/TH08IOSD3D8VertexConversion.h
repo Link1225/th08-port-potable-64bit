@@ -17,6 +17,10 @@ struct ConvertedVertex {
     uint8_t blue;
     uint8_t alpha;
     float fogCoordinate;
+    uint8_t specularRed;
+    uint8_t specularGreen;
+    uint8_t specularBlue;
+    uint8_t specularAlpha;
 };
 
 static inline LayoutError ConvertVertex(const VertexLayout &layout,
@@ -61,6 +65,10 @@ static inline LayoutError ConvertVertex(const VertexLayout &layout,
     result.blue = decoded.blue;
     result.alpha = decoded.alpha;
     result.fogCoordinate = position.fogCoordinate;
+    result.specularRed = decoded.specularRed;
+    result.specularGreen = decoded.specularGreen;
+    result.specularBlue = decoded.specularBlue;
+    result.specularAlpha = decoded.specularAlpha;
     *output = result;
     return LayoutError::None;
 }
