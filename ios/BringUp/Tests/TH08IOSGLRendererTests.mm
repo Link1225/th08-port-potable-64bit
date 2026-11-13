@@ -1023,7 +1023,7 @@
     XCTAssertEqual(output.x, validOutput.x);
 }
 
-- (void)testD3D8TransformedVerticesRejectInvalidRHW
+- (void)testD3D8TransformedVerticesPreserveLegacyZeroRHWAndRejectInvalidRHW
 {
     using namespace TH08IOSD3D8;
     const float valid[4] = {12.0f, 24.0f, 0.5f, 0.5f};
@@ -1034,16 +1034,24 @@
     XCTAssertEqualWithAccuracy(output.z, 1.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(output.w, 2.0f, 0.0001f);
 
-    const HomogeneousPosition unchanged = output;
+    // The legacy D3D8 compatibility path treats zero RHW as unit reciprocal W.
     const float zeroRHW[4] = {12.0f, 24.0f, 0.5f, 0.0f};
-    XCTAssertFalse(TransformXYZRHW(zeroRHW, &output));
+    XCTAssertTrue(TransformXYZRHW(zeroRHW, &output));
+    XCTAssertEqualWithAccuracy(output.x, 12.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.y, 24.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.z, 0.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.w, 1.0f, 0.0001f);
+
+    const HomogeneousPosition unchanged = output;
+    const float invalidRHW[4] = {12.0f, 24.0f, 0.5f, NAN};
+    XCTAssertFalse(TransformXYZRHW(invalidRHW, &output));
     XCTAssertEqual(output.x, unchanged.x);
     XCTAssertEqual(output.y, unchanged.y);
     XCTAssertEqual(output.z, unchanged.z);
     XCTAssertEqual(output.w, unchanged.w);
 
-    const float invalidRHW[4] = {12.0f, 24.0f, 0.5f, NAN};
-    XCTAssertFalse(TransformXYZRHW(invalidRHW, &output));
+    const float negativeRHW[4] = {12.0f, 24.0f, 0.5f, -1.0f};
+    XCTAssertFalse(TransformXYZRHW(negativeRHW, &output));
     XCTAssertEqual(output.x, unchanged.x);
     XCTAssertEqual(output.y, unchanged.y);
     XCTAssertEqual(output.z, unchanged.z);
