@@ -9,6 +9,10 @@ NS_ASSUME_NONNULL_BEGIN
                                  height:(GLsizei)height
                                rowBytes:(size_t)rowBytes;
 - (BOOL)deleteTexture:(GLuint)texture;
+- (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
+               count:(GLsizei)count
+           primitive:(TH08IOSRendererPrimitive)primitive
+             texture:(GLuint)texture;
 - (BOOL)setRenderState:(uint32_t)state value:(uint32_t)value;
 - (BOOL)setTextureStageState:(uint32_t)stage state:(uint32_t)state value:(uint32_t)value;
 @end

@@ -82,6 +82,21 @@
     return YES;
 }
 
+- (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
+               count:(GLsizei)count
+           primitive:(TH08IOSRendererPrimitive)primitive
+             texture:(GLuint)texture
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || vertices == NULL || count <= 0 ||
+        ![renderer isOwningContextCurrent])
+        return NO;
+    if (texture != 0u &&
+        ![_ownedTextures containsObject:[NSNumber numberWithUnsignedInt:texture]])
+        return NO;
+    return [renderer drawVertices:vertices count:count primitive:primitive texture:texture];
+}
+
 - (BOOL)applyRenderStates
 {
     TH08IOSGLRenderer *renderer = _renderer;

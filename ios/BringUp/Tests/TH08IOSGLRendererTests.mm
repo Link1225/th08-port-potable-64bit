@@ -1081,4 +1081,40 @@
 }
 
 
+
+- (void)testD3D8DeviceAdapterDrawsOnlyWithOwnedTextures
+{
+    TH08IOSD3D8DeviceAdapter *adapter = [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    const uint8_t pixel[4] = {0u, 255u, 0u, 255u};
+    const GLuint texture = [adapter createTextureWithRGBA8Pixels:pixel width:1 height:1 rowBytes:4];
+    XCTAssertNotEqual(texture, 0u);
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0 green:0 blue:0 alpha:1 depth:1];
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1, -1, 0, 0, 0, 255, 255, 255, 255},
+        { 1, -1, 0, 1, 0, 255, 255, 255, 255},
+        { 0,  1, 0, 0.5f, 1, 255, 255, 255, 255}
+    };
+    XCTAssertFalse([adapter drawVertices:vertices count:3
+                                primitive:TH08IOSRendererPrimitiveTriangles texture:texture + 1u]);
+    XCTAssertTrue([adapter drawVertices:vertices count:3
+                               primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertLessThan(bytes[center], (uint8_t)20);
+    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+
+    [self.renderer deleteTexture:target];
+    XCTAssertTrue([adapter deleteTexture:texture]);
+}
+
+
 @end
