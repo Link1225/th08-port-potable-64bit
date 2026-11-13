@@ -19,7 +19,9 @@ target currently compiles or runs that path.
 `BringUp/Renderer/TH08IOSGLRenderer` is the first native OpenGL ES 2 renderer
 module. It compiles and links explicit vertex/fragment shaders, accepts
 interleaved position/UV/RGBA vertices, draws primitive arrays, uploads RGBA8
-textures, applies explicit blend/depth/viewport state, accepts a column-major\n4×4 transform matrix, and implements fragment-shader alpha comparison for\nDirect3D 8 alpha-test modes. It is compiled into
+textures, applies explicit blend/depth/viewport state, accepts a column-major
+4×4 transform matrix, and implements fragment-shader alpha comparison for
+Direct3D 8 alpha-test modes. It is compiled into
 the bring-up target so both Simulator and device SDK builds validate the iOS
 graphics API integration.
 
