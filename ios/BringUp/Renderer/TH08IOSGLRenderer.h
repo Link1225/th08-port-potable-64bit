@@ -10,7 +10,6 @@ typedef struct TH08IOSRendererVertex {
     GLfloat x;
     GLfloat y;
     GLfloat z;
-    GLfloat positionW;
     GLfloat u;
     GLfloat v;
     GLubyte red;
@@ -22,6 +21,8 @@ typedef struct TH08IOSRendererVertex {
     GLubyte specularGreen;
     GLubyte specularBlue;
     GLubyte specularAlpha;
+    // Zero preserves legacy callers and is interpreted as homogeneous W=1.
+    GLfloat positionW;
 } TH08IOSRendererVertex;
 
 typedef NS_ENUM(GLint, TH08IOSRendererTextureOperation) {
