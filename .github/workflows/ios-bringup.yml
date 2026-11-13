@@ -52,13 +52,13 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
-      - name: Ensure a large-screen iPhone Simulator is available
+      - name: Ensure an iPhone Simulator runtime is available
         run: |
-          if ! xcrun simctl list devices available | grep -q 'iPhone 16 Plus'; then
+          if ! xcrun simctl list devices available | grep -q 'iPhone'; then
             xcodebuild -downloadPlatform iOS
           fi
           xcrun simctl list devices available
-      - name: Run OpenGL ES renderer tests on iPhone 16 Plus (14 Plus display-class proxy)
+      - name: Run OpenGL ES renderer tests on an iPhone Simulator
         run: |
           DEVICE_ID="$(python3 - <<'PY'
           import json
@@ -71,11 +71,18 @@ jobs:
               device
               for runtime_devices in data["devices"].values()
               for device in runtime_devices
-              if device.get("isAvailable") and device.get("name") == "iPhone 16 Plus"
+              if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
           ]
           if not devices:
-              raise SystemExit("iPhone 16 Plus simulator is unavailable after installing the iOS runtime.")
+              raise SystemExit("No available iPhone simulator after installing the iOS runtime.")
+          # Prefer a Plus-sized simulator as the closest available display-class
+          # proxy for the target iPhone 14 Plus; otherwise use any available iPhone.
+          devices.sort(key=lambda device: (
+              "Plus" not in device.get("name", ""),
+              device.get("name", ""),
+          ))
           print(devices[0]["udid"])
+          print(f"Selected simulator: {devices[0]['name']}", file=__import__("sys").stderr)
           PY
           )"
           xcodebuild \
