@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 namespace {
 
@@ -107,9 +108,8 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     self = [super init];
     if (self == nil)
         return nil;
-    if ([EAGLContext currentContext] == nil) {
+    if ([EAGLContext currentContext] == nil)
         return nil;
-    }
 
     _program = CreateProgram();
     if (_program == 0)
