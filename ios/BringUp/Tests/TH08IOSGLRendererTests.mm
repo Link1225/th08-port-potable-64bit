@@ -2,6 +2,7 @@
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
 
+#include <limits>
 #include <vector>
 
 #import "../Renderer/TH08IOSGLRenderer.h"
@@ -946,6 +947,12 @@
     XCTAssertEqual(ConvertVertices(layout, source, sizeof(SourceVertex) - 1, 2,
         identity, identity, identity, identity, viewport, &output),
         BatchConversionError::VertexDecodeFailed);
+    XCTAssertEqual(output.size(), previousSize);
+
+    const size_t overflowingStride = std::numeric_limits<size_t>::max() / 2u + 1u;
+    XCTAssertEqual(ConvertVertices(layout, source, overflowingStride, 3,
+        identity, identity, identity, identity, viewport, &output),
+        BatchConversionError::CountOverflow);
     XCTAssertEqual(output.size(), previousSize);
 }
 - (void)testD3D8VertexConversionDoesNotModifyOutputOnDecodeFailure
