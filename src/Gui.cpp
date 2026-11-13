@@ -824,14 +824,10 @@ ZunResult GuiImpl::DrawDialogue()
         dialogueBoxHeight = 48.0f;
 
     VertexDiffuseXyzrhw vertices[4];
-    memcpy(&vertices[0].pos, &Float3(g_GameManager.arcadeRegionTopLeftPos.x + 16.0f, 384.0f, 0.0f), sizeof(Float3));
-    memcpy(&vertices[1].pos,
-           &Float3(g_GameManager.arcadeRegionTopLeftPos.x + 384.0f - 16.0f, 384.0f, 0.0f), sizeof(Float3));
-    memcpy(&vertices[2].pos,
-           &Float3(g_GameManager.arcadeRegionTopLeftPos.x + 16.0f, 384.0f + dialogueBoxHeight, 0.0f), sizeof(Float3));
-    memcpy(&vertices[3].pos,
-           &Float3(g_GameManager.arcadeRegionTopLeftPos.x + 384.0f - 16.0f, 384.0f + dialogueBoxHeight, 0.0f),
-           sizeof(Float3));
+    vertices[0].pos = Float3(g_GameManager.arcadeRegionTopLeftPos.x + 16.0f, 384.0f, 0.0f);
+    vertices[1].pos = Float3(g_GameManager.arcadeRegionTopLeftPos.x + 384.0f - 16.0f, 384.0f, 0.0f);
+    vertices[2].pos = Float3(g_GameManager.arcadeRegionTopLeftPos.x + 16.0f, 384.0f + dialogueBoxHeight, 0.0f);
+    vertices[3].pos = Float3(g_GameManager.arcadeRegionTopLeftPos.x + 384.0f - 16.0f, 384.0f + dialogueBoxHeight, 0.0f);
 
     vertices[0].diffuse = vertices[1].diffuse = 0xd0000000;
     vertices[2].diffuse = vertices[3].diffuse = 0x90000000;
@@ -1160,13 +1156,14 @@ void Gui::UpdateStageElements()
 }
 
 // FUNCTION: th08 0x43625d
-#pragma var_order(yPos, xPos, idx, vm)
+#pragma var_order(powerTextPosition, yPos, xPos, idx, vm)
 void Gui::DrawGameScene()
 {
     AnmVm *vm;
     i32 idx;
     f32 xPos;
     f32 yPos;
+    Float3 powerTextPosition(488.0f, 136.0f, 0.0f);
 
     g_AnmManager->FlushVertexBuffer();
     g_Supervisor.viewport.X = 0;
@@ -1380,11 +1377,11 @@ void Gui::DrawGameScene()
         }
         if (g_GameManager.GetPower() < 128)
         {
-            g_AsciiManager.AddFormatText(&Float3(488.0f, 136.0f, 0.0f), "%d", g_GameManager.GetPower());
+            g_AsciiManager.AddFormatText(&powerTextPosition, "%d", g_GameManager.GetPower());
         }
         else
         {
-            g_AsciiManager.AddFormatText(&Float3(488.0f, 136.0f, 0.0f), "MAX");
+            g_AsciiManager.AddFormatText(&powerTextPosition, "MAX");
         }
     }
 

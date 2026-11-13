@@ -705,9 +705,10 @@ void Enemy::ReleaseChildEclBlocks()
 }
 
 // FUNCTION: th08 0x42bcf0
-#pragma var_order(i, this)
+#pragma var_order(offscreenPosition, i, this)
 void Enemy::Despawn()
 {
+    Float3 offscreenPosition(-999.0f, -999.0f, 0.0f);
     i32 i;
 
     this->DetachEnemyChain(0);
@@ -726,7 +727,7 @@ void Enemy::Despawn()
             this->bossSlot, 2);
         g_AsciiManager.SetBossMarkerPosition(
             this->bossSlot,
-            D3DXVECTOR3_PTR(&Float3(-999.0f, -999.0f, 0.0f)));
+            D3DXVECTOR3_PTR(&offscreenPosition));
     }
 
     if (this->attachedEffectCount != 0)
