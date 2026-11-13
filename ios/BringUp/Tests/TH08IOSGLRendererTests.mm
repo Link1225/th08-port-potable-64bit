@@ -107,7 +107,7 @@
     const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
     XCTAssertNotEqual(target, 0u);
     XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:1 height:1]);
     [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
 
     TH08IOSRendererVertex vertices[3] = {
@@ -919,6 +919,12 @@
     XCTAssertTrue([adapter setProjectionTransform:identity]);
     XCTAssertTrue([adapter setTextureTransform:identity]);
     XCTAssertTrue([adapter setD3DViewport:viewport]);
+    GLint actualViewport[4] = {-1, -1, -1, -1};
+    glGetIntegerv(GL_VIEWPORT, actualViewport);
+    XCTAssertEqual(actualViewport[0], 0);
+    XCTAssertEqual(actualViewport[1], 0);
+    XCTAssertEqual(actualViewport[2], 8);
+    XCTAssertEqual(actualViewport[3], 8);
 
     TH08IOSD3D8::Matrix4 invalidTransform = identity;
     invalidTransform.m[0][0] = NAN;
