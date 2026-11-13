@@ -26,6 +26,87 @@ enum TextureArgument {
     TextureArgumentFactor = 2
 };
 
+
+enum class RenderState {
+    ZEnable,
+    ZWriteEnable,
+    AlphaTestEnable,
+    SourceBlend,
+    DestinationBlend,
+    ZFunction,
+    AlphaReference,
+    AlphaFunction,
+    AlphaBlendEnable,
+    FogEnable,
+    FogColor,
+    FogStart,
+    FogEnd,
+    TextureFactor,
+    ColorWriteEnable,
+    BlendOperation,
+    FogVertexMode
+};
+
+enum class TextureStageState {
+    ColorOperation,
+    ColorArgument1,
+    ColorArgument2,
+    AlphaOperation,
+    AlphaArgument1,
+    AlphaArgument2,
+    AddressU,
+    AddressV,
+    MagnificationFilter,
+    MinificationFilter
+};
+
+// D3D8 enum values are intentionally kept here instead of importing d3d8.h;
+// this header remains usable by the iOS target and its host-independent tests.
+static inline bool MapRenderState(uint32_t d3dState, RenderState *output)
+{
+    if (output == NULL)
+        return false;
+    switch (d3dState) {
+    case 7u: *output = RenderState::ZEnable; return true;
+    case 14u: *output = RenderState::ZWriteEnable; return true;
+    case 15u: *output = RenderState::AlphaTestEnable; return true;
+    case 19u: *output = RenderState::SourceBlend; return true;
+    case 20u: *output = RenderState::DestinationBlend; return true;
+    case 23u: *output = RenderState::ZFunction; return true;
+    case 24u: *output = RenderState::AlphaReference; return true;
+    case 25u: *output = RenderState::AlphaFunction; return true;
+    case 27u: *output = RenderState::AlphaBlendEnable; return true;
+    case 28u: *output = RenderState::FogEnable; return true;
+    case 34u: *output = RenderState::FogColor; return true;
+    case 36u: *output = RenderState::FogStart; return true;
+    case 37u: *output = RenderState::FogEnd; return true;
+    case 60u: *output = RenderState::TextureFactor; return true;
+    case 140u: *output = RenderState::FogVertexMode; return true;
+    case 168u: *output = RenderState::ColorWriteEnable; return true;
+    case 171u: *output = RenderState::BlendOperation; return true;
+    default: return false;
+    }
+}
+
+static inline bool MapTextureStageState(uint32_t d3dState, TextureStageState *output)
+{
+    if (output == NULL)
+        return false;
+    switch (d3dState) {
+    case 1u: *output = TextureStageState::ColorOperation; return true;
+    case 2u: *output = TextureStageState::ColorArgument1; return true;
+    case 3u: *output = TextureStageState::ColorArgument2; return true;
+    case 4u: *output = TextureStageState::AlphaOperation; return true;
+    case 5u: *output = TextureStageState::AlphaArgument1; return true;
+    case 6u: *output = TextureStageState::AlphaArgument2; return true;
+    case 13u: *output = TextureStageState::AddressU; return true;
+    case 14u: *output = TextureStageState::AddressV; return true;
+    case 16u: *output = TextureStageState::MagnificationFilter; return true;
+    case 17u: *output = TextureStageState::MinificationFilter; return true;
+    default: return false;
+    }
+}
+
 enum TextureArgumentModifier {
     TextureArgumentModifierNone = 0,
     TextureArgumentModifierComplement = 1u << 0,

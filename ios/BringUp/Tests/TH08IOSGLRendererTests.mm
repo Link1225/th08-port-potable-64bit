@@ -994,4 +994,50 @@
     [self.renderer deleteTexture:target];
 }
 
+
+- (void)testD3D8StateMappingIdentifiesSupportedDeviceStateSlots
+{
+    using namespace TH08IOSD3D8;
+    const uint32_t renderStateValues[] = {
+        7u, 14u, 15u, 19u, 20u, 23u, 24u, 25u, 27u, 28u,
+        34u, 36u, 37u, 60u, 140u, 168u, 171u
+    };
+    const RenderState renderExpected[] = {
+        RenderState::ZEnable, RenderState::ZWriteEnable, RenderState::AlphaTestEnable,
+        RenderState::SourceBlend, RenderState::DestinationBlend, RenderState::ZFunction,
+        RenderState::AlphaReference, RenderState::AlphaFunction, RenderState::AlphaBlendEnable,
+        RenderState::FogEnable, RenderState::FogColor, RenderState::FogStart, RenderState::FogEnd,
+        RenderState::TextureFactor, RenderState::FogVertexMode, RenderState::ColorWriteEnable,
+        RenderState::BlendOperation
+    };
+    for (NSUInteger i = 0; i < sizeof(renderStateValues) / sizeof(renderStateValues[0]); ++i) {
+        RenderState actual = RenderState::ZEnable;
+        XCTAssertTrue(MapRenderState(renderStateValues[i], &actual));
+        XCTAssertEqual(static_cast<int>(actual), static_cast<int>(renderExpected[i]));
+    }
+    RenderState untouched = RenderState::FogEnable;
+    XCTAssertFalse(MapRenderState(255u, &untouched));
+    XCTAssertEqual(static_cast<int>(untouched), static_cast<int>(RenderState::FogEnable));
+    XCTAssertFalse(MapRenderState(7u, NULL));
+
+    const uint32_t textureStateValues[] = {1u, 2u, 3u, 4u, 5u, 6u, 13u, 14u, 16u, 17u};
+    const TextureStageState textureExpected[] = {
+        TextureStageState::ColorOperation, TextureStageState::ColorArgument1,
+        TextureStageState::ColorArgument2, TextureStageState::AlphaOperation,
+        TextureStageState::AlphaArgument1, TextureStageState::AlphaArgument2,
+        TextureStageState::AddressU, TextureStageState::AddressV,
+        TextureStageState::MagnificationFilter, TextureStageState::MinificationFilter
+    };
+    for (NSUInteger i = 0; i < sizeof(textureStateValues) / sizeof(textureStateValues[0]); ++i) {
+        TextureStageState actual = TextureStageState::ColorOperation;
+        XCTAssertTrue(MapTextureStageState(textureStateValues[i], &actual));
+        XCTAssertEqual(static_cast<int>(actual), static_cast<int>(textureExpected[i]));
+    }
+    TextureStageState textureUntouched = TextureStageState::AddressU;
+    XCTAssertFalse(MapTextureStageState(31u, &textureUntouched));
+    XCTAssertEqual(static_cast<int>(textureUntouched), static_cast<int>(TextureStageState::AddressU));
+    XCTAssertFalse(MapTextureStageState(1u, NULL));
+}
+
+
 @end
