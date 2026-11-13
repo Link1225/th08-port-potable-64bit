@@ -48,6 +48,7 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
 - (BOOL)setAlphaTestEnabled:(BOOL)enabled
             compareFunction:(GLenum)compareFunction
                   reference:(GLfloat)reference;
+- (BOOL)setDepthCompareFunction:(GLenum)compareFunction;
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled;
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
            depth:(GLfloat)depth;

@@ -138,6 +138,17 @@ bool IsValidTextureWrap(GLenum wrap)
     return wrap == GL_CLAMP_TO_EDGE || wrap == GL_REPEAT || wrap == GL_MIRRORED_REPEAT;
 }
 
+bool IsValidCompareFunction(GLenum function)
+{
+    switch (function) {
+    case GL_NEVER: case GL_LESS: case GL_EQUAL: case GL_LEQUAL:
+    case GL_GREATER: case GL_NOTEQUAL: case GL_GEQUAL: case GL_ALWAYS:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 {
     switch (primitive) {
@@ -174,6 +185,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLfloat _alphaTestReference;
     BOOL _blendingEnabled;
     BOOL _depthTestingEnabled;
+    GLenum _depthCompareFunction;
     BOOL _depthWriteEnabled;
     GLenum _sourceFactor;
     GLenum _destinationFactor;
@@ -224,6 +236,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaTestReference = 0.0f;
     _blendingEnabled = NO;
     _depthTestingEnabled = NO;
+    _depthCompareFunction = GL_LESS;
     _depthWriteEnabled = YES;
     _sourceFactor = GL_SRC_ALPHA;
     _destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
@@ -283,7 +296,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
              sourceFactor:(GLenum)sourceFactor
         destinationFactor:(GLenum)destinationFactor
 {
-    if (!IsValidBlendFactor(sourceFactor) || !IsValidBlendFactor(destinationFactor))
+    if ([EAGLContext currentContext] != _context ||
+        !IsValidBlendFactor(sourceFactor) || !IsValidBlendFactor(destinationFactor))
         return NO;
     _blendingEnabled = enabled;
     _sourceFactor = sourceFactor;
@@ -296,7 +310,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
                                   wrapS:(GLenum)wrapS
                                   wrapT:(GLenum)wrapT
 {
-    if (!IsValidTextureFilter(minificationFilter) ||
+    if ([EAGLContext currentContext] != _context ||
+        !IsValidTextureFilter(minificationFilter) ||
         !IsValidTextureFilter(magnificationFilter) ||
         !IsValidTextureWrap(wrapS) || !IsValidTextureWrap(wrapT))
         return NO;
@@ -309,7 +324,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 
 - (BOOL)setTransformMatrix:(const GLfloat *)columnMajorMatrix
 {
-    if (columnMajorMatrix == NULL)
+    if ([EAGLContext currentContext] != _context || columnMajorMatrix == NULL)
         return NO;
     for (NSUInteger index = 0; index < 16; ++index) {
         if (!isfinite(columnMajorMatrix[index]))
@@ -323,6 +338,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
             compareFunction:(GLenum)compareFunction
                   reference:(GLfloat)reference
 {
+    if ([EAGLContext currentContext] != _context)
+        return NO;
     GLint function = 7;
     switch (compareFunction) {
     case GL_NEVER: function = 0; break;
@@ -343,8 +360,18 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     return YES;
 }
 
+- (BOOL)setDepthCompareFunction:(GLenum)compareFunction
+{
+    if ([EAGLContext currentContext] != _context || !IsValidCompareFunction(compareFunction))
+        return NO;
+    _depthCompareFunction = compareFunction;
+    return YES;
+}
+
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled
 {
+    if ([EAGLContext currentContext] != _context)
+        return;
     _depthTestingEnabled = enabled;
     _depthWriteEnabled = writeEnabled;
 }
@@ -361,6 +388,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
         glEnable(GL_DEPTH_TEST);
     else
         glDisable(GL_DEPTH_TEST);
+    glDepthFunc(_depthCompareFunction);
     glDepthMask(_depthWriteEnabled ? GL_TRUE : GL_FALSE);
 }
 
