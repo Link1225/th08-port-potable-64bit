@@ -130,16 +130,26 @@ static inline bool TransformXYZRHW(const float position[4],
     if (position == NULL || output == NULL ||
         !isfinite(position[0]) || !isfinite(position[1]) ||
         !isfinite(position[2]) || !isfinite(position[3]) ||
-        !(position[3] > 0.0f))
+        position[3] < 0.0f)
         return false;
-    const float inverseW = 1.0f / position[3];
-    if (!isfinite(inverseW))
-        return false;
+
     HomogeneousPosition result;
-    result.x = (position[0] + 0.5f) * inverseW;
-    result.y = (position[1] + 0.5f) * inverseW;
-    result.z = position[2] * inverseW;
-    result.w = inverseW;
+    if (position[3] == 0.0f) {
+        // Preserve the legacy D3D8 adapter's zero-RHW fallback: treat the
+        // transformed coordinates as already having unit reciprocal W.
+        result.x = position[0] + 0.5f;
+        result.y = position[1] + 0.5f;
+        result.z = position[2];
+        result.w = 1.0f;
+    } else {
+        const float inverseW = 1.0f / position[3];
+        if (!isfinite(inverseW))
+            return false;
+        result.x = (position[0] + 0.5f) * inverseW;
+        result.y = (position[1] + 0.5f) * inverseW;
+        result.z = position[2] * inverseW;
+        result.w = inverseW;
+    }
     result.fogCoordinate = 0.0f;
     if (!isfinite(result.x) || !isfinite(result.y) ||
         !isfinite(result.z) || !isfinite(result.w))
