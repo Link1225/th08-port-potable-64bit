@@ -7,73 +7,6 @@
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
 @property(nonatomic, strong) TH08IOSGLRenderer *renderer;
-- (void)testDrawsUntexturedColoredTriangleIntoRenderTarget
-{
-    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
-    XCTAssertNotEqual(target, 0u);
-    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
-    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
-
-    TH08IOSRendererVertex vertices[3] = {
-        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255},
-        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
-        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 0, 0, 255}
-    };
-    XCTAssertTrue([self.renderer drawVertices:vertices count:3
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
-
-    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(pixels);
-    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
-    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
-    XCTAssertGreaterThan(bytes[center], (uint8_t)200);
-    XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
-    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
-    XCTAssertEqual(bytes[center + 3], (uint8_t)255);
-
-    [self.renderer deleteTexture:target];
-}
-
-- (void)testUploadsAndSamplesRGBA8Texture
-{
-    const uint8_t texel[4] = {0, 255, 0, 255};
-    const GLuint texture = [self.renderer createTextureWithRGBA8Pixels:texel
-                                                                  width:1
-                                                                 height:1
-                                                               rowBytes:4];
-    XCTAssertNotEqual(texture, 0u);
-
-    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
-    XCTAssertNotEqual(target, 0u);
-    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
-    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
-
-    TH08IOSRendererVertex vertices[6] = {
-        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255},
-        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255},
-        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 255, 255, 255},
-        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 255, 255, 255},
-        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255},
-        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 255, 255, 255}
-    };
-    XCTAssertTrue([self.renderer drawVertices:vertices count:6
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
-
-    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(pixels);
-    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
-    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
-    XCTAssertLessThan(bytes[center], (uint8_t)20);
-    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
-    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
-    XCTAssertEqual(bytes[center + 3], (uint8_t)255);
-
-    [self.renderer deleteTexture:target];
-    [self.renderer deleteTexture:texture];
-}
-
 @end
 
 @implementation TH08IOSGLRendererTests
@@ -154,6 +87,73 @@
                                                           wrapT:GL_CLAMP_TO_EDGE]);
     XCTAssertTrue([self.renderer setBlendingEnabled:YES sourceFactor:GL_SRC_ALPHA
                                    destinationFactor:GL_ONE_MINUS_SRC_ALPHA]);
+}
+
+- (void)testDrawsUntexturedColoredTriangleIntoRenderTarget
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 0, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertGreaterThan(bytes[center], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+    XCTAssertEqual(bytes[center + 3], (uint8_t)255);
+
+    [self.renderer deleteTexture:target];
+}
+
+- (void)testUploadsAndSamplesRGBA8Texture
+{
+    const uint8_t texel[4] = {0, 255, 0, 255};
+    const GLuint texture = [self.renderer createTextureWithRGBA8Pixels:texel
+                                                                  width:1
+                                                                 height:1
+                                                               rowBytes:4];
+    XCTAssertNotEqual(texture, 0u);
+
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 255, 255, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 255, 255, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255},
+        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 255, 255, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertLessThan(bytes[center], (uint8_t)20);
+    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+    XCTAssertEqual(bytes[center + 3], (uint8_t)255);
+
+    [self.renderer deleteTexture:target];
+    [self.renderer deleteTexture:texture];
 }
 
 @end
