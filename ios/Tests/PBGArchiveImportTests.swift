@@ -79,6 +79,18 @@ enum PBGArchiveImportTests {
         try Data(archive).write(to: pairDirectory.appendingPathComponent("th08.dat"))
         try Data(archive).write(to: pairDirectory.appendingPathComponent("thbgm.dat"))
         try TH08DataArchiveImport.validatePair(at: pairDirectory)
+
+        let previousWorkingDirectory = FileManager.default.currentDirectoryPath
+        defer {
+            _ = FileManager.default.changeCurrentDirectoryPath(previousWorkingDirectory)
+        }
+        try TH08DataArchiveImport.activateEngineDataDirectory(at: pairDirectory)
+        precondition(
+            URL(fileURLWithPath: FileManager.default.currentDirectoryPath).standardizedFileURL
+                == pairDirectory.standardizedFileURL,
+            "Engine data directory activation failed"
+        )
+
         try FileManager.default.removeItem(at: pairDirectory.appendingPathComponent("thbgm.dat"))
         expectFailure("incomplete installed archive pair") {
             try TH08DataArchiveImport.validatePair(at: pairDirectory)

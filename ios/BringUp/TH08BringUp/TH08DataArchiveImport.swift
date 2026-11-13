@@ -17,6 +17,7 @@ enum TH08DataArchiveImport {
         case invalidArchive(String)
         case cannotAccessFile(String)
         case transactionFailed(String)
+        case cannotActivateDataDirectory
 
         var errorDescription: String? {
             switch self {
@@ -32,6 +33,8 @@ enum TH08DataArchiveImport {
                 return "Could not access \(name)."
             case .transactionFailed(let message):
                 return "Import failed: \(message)"
+            case .cannotActivateDataDirectory:
+                return "Could not set the imported game-data directory as the engine working directory."
             }
         }
     }
@@ -71,6 +74,17 @@ enum TH08DataArchiveImport {
                 throw ImportError.invalidArchive(name)
             }
             try validatePBGArchive(at: archive, fileSize: Int64(size), name: name)
+        }
+    }
+
+    /// Sets the process working directory to the validated retail data folder.
+    /// The original engine opens archive and configuration assets by relative
+    /// path, so this must run before the engine is initialized. The current
+    /// directory is process-wide; call once during app startup, not per frame.
+    static func activateEngineDataDirectory(at directory: URL) throws {
+        try validatePair(at: directory)
+        guard FileManager.default.changeCurrentDirectoryPath(directory.path) else {
+            throw ImportError.cannotActivateDataDirectory
         }
     }
 

@@ -75,8 +75,13 @@ struct BringUpView: View {
                     TH08DataArchiveImport.existingDirectory()
                 }.value
                 if let directory = existingDirectory {
-                    importedDirectory = directory
-                    status = "Both original archives are present and passed validation."
+                    do {
+                        try TH08DataArchiveImport.activateEngineDataDirectory(at: directory)
+                        importedDirectory = directory
+                        status = "Both original archives are valid. The engine data directory is active."
+                    } catch {
+                        status = error.localizedDescription
+                    }
                 }
             }
         }
@@ -94,8 +99,9 @@ struct BringUpView: View {
                     let directory = try await Task.detached(priority: .userInitiated) {
                         try TH08DataArchiveImport.installPair(from: urls)
                     }.value
+                    try TH08DataArchiveImport.activateEngineDataDirectory(at: directory)
                     importedDirectory = directory
-                    status = "Both archives were imported successfully."
+                    status = "Both archives were imported and the engine data directory is active."
                 } catch {
                     status = error.localizedDescription
                 }
