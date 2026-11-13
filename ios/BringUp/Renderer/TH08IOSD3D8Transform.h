@@ -68,6 +68,36 @@ static inline bool TransformXYZ(const float position[3],
     return true;
 }
 
+
+static inline bool ViewportToClipPosition(const HomogeneousPosition &screenPosition,
+                                          const Viewport &viewport,
+                                          float output[4])
+{
+    if (output == NULL || !(viewport.width > 0.0f) ||
+        !(viewport.height > 0.0f) || !(viewport.maxZ > viewport.minZ) ||
+        !isfinite(screenPosition.x) || !isfinite(screenPosition.y) ||
+        !isfinite(screenPosition.z) || !isfinite(screenPosition.w) ||
+        !isfinite(viewport.x) || !isfinite(viewport.y) ||
+        !isfinite(viewport.width) || !isfinite(viewport.height) ||
+        !isfinite(viewport.minZ) || !isfinite(viewport.maxZ))
+        return false;
+
+    const float w = screenPosition.w;
+    const float ndcX = 2.0f * (screenPosition.x - (viewport.x + 0.5f) * w) /
+                       viewport.width - w;
+    const float ndcY = w - 2.0f * (screenPosition.y - (viewport.y + 0.5f) * w) /
+                       viewport.height;
+    const float depth = (screenPosition.z - viewport.minZ * w) /
+                        (viewport.maxZ - viewport.minZ);
+    const float result[4] = {ndcX, ndcY, (2.0f * depth - 1.0f) * w, w};
+    for (size_t index = 0; index < 4; ++index)
+        if (!isfinite(result[index]))
+            return false;
+    for (size_t index = 0; index < 4; ++index)
+        output[index] = result[index];
+    return true;
+}
+
 static inline bool TransformXYZRHW(const float position[4],
                                    HomogeneousPosition *output)
 {
