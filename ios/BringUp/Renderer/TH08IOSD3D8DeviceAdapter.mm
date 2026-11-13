@@ -75,7 +75,7 @@
     if (![_ownedTextures containsObject:key])
         return NO;
     TH08IOSGLRenderer *renderer = _renderer;
-    if (renderer == nil)
+    if (renderer == nil || ![renderer isOwningContextCurrent])
         return NO;
     [renderer deleteTexture:texture];
     [_ownedTextures removeObject:key];

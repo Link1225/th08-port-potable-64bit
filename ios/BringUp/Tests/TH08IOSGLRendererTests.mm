@@ -27,6 +27,11 @@
     XCTAssertNotEqual(texture, 0u);
     XCTAssertFalse([adapter deleteTexture:0u]);
     XCTAssertFalse([adapter deleteTexture:texture + 1u]);
+    EAGLContext *otherContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    XCTAssertNotNil(otherContext);
+    XCTAssertTrue([EAGLContext setCurrentContext:otherContext]);
+    XCTAssertFalse([adapter deleteTexture:texture]);
+    XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
     XCTAssertTrue([adapter deleteTexture:texture]);
     XCTAssertFalse([adapter deleteTexture:texture]);
 }

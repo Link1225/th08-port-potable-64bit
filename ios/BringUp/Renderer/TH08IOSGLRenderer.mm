@@ -304,6 +304,11 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 
 @implementation TH08IOSGLRenderer
 
+- (BOOL)isOwningContextCurrent
+{
+    return [EAGLContext currentContext] == _context;
+}
+
 - (nullable instancetype)initWithCurrentContext
 {
     self = [super init];

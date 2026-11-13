@@ -57,6 +57,7 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
 @interface TH08IOSGLRenderer : NSObject
 
 - (nullable instancetype)initWithCurrentContext;
+- (BOOL)isOwningContextCurrent;
 - (BOOL)setViewportX:(GLint)x y:(GLint)y width:(GLsizei)width height:(GLsizei)height;
 - (BOOL)setBlendingEnabled:(BOOL)enabled
              sourceFactor:(GLenum)sourceFactor
