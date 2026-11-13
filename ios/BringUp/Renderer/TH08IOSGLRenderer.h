@@ -37,6 +37,8 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
 - (BOOL)setBlendingEnabled:(BOOL)enabled
              sourceFactor:(GLenum)sourceFactor
         destinationFactor:(GLenum)destinationFactor;
+- (BOOL)setBlendEquation:(GLenum)equation;
+- (BOOL)setColorWriteMaskRed:(BOOL)red green:(BOOL)green blue:(BOOL)blue alpha:(BOOL)alpha;
 // ES2 non-mipmap sampling modes. Defaults are linear filtering and clamp-to-edge.
 - (BOOL)setTextureMinificationFilter:(GLenum)minificationFilter
                     magnificationFilter:(GLenum)magnificationFilter

@@ -128,6 +128,12 @@ bool IsValidBlendFactor(GLenum factor)
     }
 }
 
+bool IsValidBlendEquation(GLenum equation)
+{
+    return equation == GL_FUNC_ADD || equation == GL_FUNC_SUBTRACT ||
+           equation == GL_FUNC_REVERSE_SUBTRACT;
+}
+
 bool IsValidTextureFilter(GLenum filter)
 {
     return filter == GL_NEAREST || filter == GL_LINEAR;
@@ -191,6 +197,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     BOOL _depthWriteEnabled;
     GLenum _sourceFactor;
     GLenum _destinationFactor;
+    GLenum _blendEquation;
+    GLboolean _colorWriteMask[4];
     GLenum _minificationFilter;
     GLenum _magnificationFilter;
     GLenum _wrapS;
@@ -245,6 +253,9 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _depthWriteEnabled = YES;
     _sourceFactor = GL_SRC_ALPHA;
     _destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
+    _blendEquation = GL_FUNC_ADD;
+    _colorWriteMask[0] = _colorWriteMask[1] = GL_TRUE;
+    _colorWriteMask[2] = _colorWriteMask[3] = GL_TRUE;
     _minificationFilter = GL_LINEAR;
     _magnificationFilter = GL_LINEAR;
     _wrapS = GL_CLAMP_TO_EDGE;
@@ -307,6 +318,25 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _blendingEnabled = enabled;
     _sourceFactor = sourceFactor;
     _destinationFactor = destinationFactor;
+    return YES;
+}
+
+- (BOOL)setBlendEquation:(GLenum)equation
+{
+    if ([EAGLContext currentContext] != _context || !IsValidBlendEquation(equation))
+        return NO;
+    _blendEquation = equation;
+    return YES;
+}
+
+- (BOOL)setColorWriteMaskRed:(BOOL)red green:(BOOL)green blue:(BOOL)blue alpha:(BOOL)alpha
+{
+    if ([EAGLContext currentContext] != _context)
+        return NO;
+    _colorWriteMask[0] = red ? GL_TRUE : GL_FALSE;
+    _colorWriteMask[1] = green ? GL_TRUE : GL_FALSE;
+    _colorWriteMask[2] = blue ? GL_TRUE : GL_FALSE;
+    _colorWriteMask[3] = alpha ? GL_TRUE : GL_FALSE;
     return YES;
 }
 
@@ -398,6 +428,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 {
     if (_blendingEnabled) {
         glEnable(GL_BLEND);
+        glBlendEquation(_blendEquation);
         glBlendFunc(_sourceFactor, _destinationFactor);
     } else {
         glDisable(GL_BLEND);
@@ -414,6 +445,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
         glDisable(GL_SCISSOR_TEST);
     }
     glDepthMask(_depthWriteEnabled ? GL_TRUE : GL_FALSE);
+    glColorMask(_colorWriteMask[0], _colorWriteMask[1],
+                _colorWriteMask[2], _colorWriteMask[3]);
 }
 
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
@@ -424,15 +457,20 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     const GLboolean scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
     GLint previousScissor[4] = {0, 0, 0, 0};
     GLboolean previousDepthWrite = GL_TRUE;
+    GLboolean previousColorMask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
     glGetIntegerv(GL_SCISSOR_BOX, previousScissor);
     glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthWrite);
+    glGetBooleanv(GL_COLOR_WRITEMASK, previousColorMask);
     if (scissorWasEnabled)
         glDisable(GL_SCISSOR_TEST);
     glDepthMask(GL_TRUE);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClearColor(red, green, blue, alpha);
     glClearDepthf(depth);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDepthMask(previousDepthWrite);
+    glColorMask(previousColorMask[0], previousColorMask[1],
+                previousColorMask[2], previousColorMask[3]);
     if (scissorWasEnabled) {
         glScissor(previousScissor[0], previousScissor[1],
                   previousScissor[2], previousScissor[3]);
