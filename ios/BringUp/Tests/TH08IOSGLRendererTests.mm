@@ -5,6 +5,7 @@
 #include <vector>
 
 #import "../Renderer/TH08IOSGLRenderer.h"
+#import "../Renderer/TH08IOSD3D8DeviceAdapter.h"
 #import "../Renderer/TH08IOSD3D8VertexLayout.h"
 #import "../Renderer/TH08IOSD3D8StateMapping.h"
 #import "../Renderer/TH08IOSD3D8Transform.h"
@@ -1037,6 +1038,26 @@
     XCTAssertFalse(MapTextureStageState(31u, &textureUntouched));
     XCTAssertEqual(static_cast<int>(textureUntouched), static_cast<int>(TextureStageState::AddressU));
     XCTAssertFalse(MapTextureStageState(1u, NULL));
+}
+
+
+
+- (void)testD3D8DeviceAdapterAppliesSupportedStateAndRejectsUnsupportedValues
+{
+    TH08IOSD3D8DeviceAdapter *adapter = [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    XCTAssertTrue([adapter setRenderState:27u value:1u]);
+    XCTAssertTrue([adapter setRenderState:19u value:5u]);
+    XCTAssertTrue([adapter setRenderState:20u value:6u]);
+    XCTAssertTrue([adapter setRenderState:171u value:2u]);
+    XCTAssertTrue([adapter setRenderState:168u value:7u]);
+    XCTAssertTrue([adapter setTextureStageState:0u state:1u value:4u]);
+    XCTAssertTrue([adapter setTextureStageState:0u state:2u value:0x12u]);
+    XCTAssertTrue([adapter setTextureStageState:0u state:17u value:1u]);
+    XCTAssertFalse([adapter setRenderState:999u value:1u]);
+    XCTAssertFalse([adapter setRenderState:7u value:2u]);
+    XCTAssertFalse([adapter setTextureStageState:1u state:1u value:4u]);
+    XCTAssertFalse([adapter setTextureStageState:0u state:17u value:3u]);
 }
 
 
