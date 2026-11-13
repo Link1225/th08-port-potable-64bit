@@ -658,10 +658,11 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
                 _colorWriteMask[2], _colorWriteMask[3]);
 }
 
-- (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
-           depth:(GLfloat)depth
+- (void)clearColorEnabled:(BOOL)clearColor
+                      red:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
+            depthEnabled:(BOOL)clearDepth depth:(GLfloat)depth
 {
-    if ([EAGLContext currentContext] != _context)
+    if (![self isOwningContextCurrent] || (!clearColor && !clearDepth))
         return;
     const GLboolean scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
     GLint previousScissor[4] = {0, 0, 0, 0};
@@ -672,11 +673,20 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glGetBooleanv(GL_COLOR_WRITEMASK, previousColorMask);
     if (scissorWasEnabled)
         glDisable(GL_SCISSOR_TEST);
-    glDepthMask(GL_TRUE);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glClearColor(red, green, blue, alpha);
-    glClearDepthf(depth);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    GLbitfield clearMask = 0;
+    if (clearColor) {
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glClearColor(red, green, blue, alpha);
+        clearMask |= GL_COLOR_BUFFER_BIT;
+    }
+    if (clearDepth) {
+        glDepthMask(GL_TRUE);
+        glClearDepthf(depth);
+        clearMask |= GL_DEPTH_BUFFER_BIT;
+    }
+    glClear(clearMask);
+
     glDepthMask(previousDepthWrite);
     glColorMask(previousColorMask[0], previousColorMask[1],
                 previousColorMask[2], previousColorMask[3]);
@@ -685,6 +695,13 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
                   previousScissor[2], previousScissor[3]);
         glEnable(GL_SCISSOR_TEST);
     }
+}
+
+- (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
+           depth:(GLfloat)depth
+{
+    [self clearColorEnabled:YES red:red green:green blue:blue alpha:alpha
+              depthEnabled:YES depth:depth];
 }
 
 - (GLuint)createTextureWithRGBA8Pixels:(const void *)pixels

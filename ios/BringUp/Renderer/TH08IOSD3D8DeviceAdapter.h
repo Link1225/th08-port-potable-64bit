@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)setProjectionTransform:(const TH08IOSD3D8::Matrix4 &)transform;
 - (BOOL)setTextureTransform:(const TH08IOSD3D8::Matrix4 &)transform;
 - (BOOL)setD3DViewport:(const TH08IOSD3D8::Viewport &)viewport;
+- (BOOL)clearColorEnabled:(BOOL)clearColor color:(uint32_t)color
+            depthEnabled:(BOOL)clearDepth depth:(float)depth;
 - (BOOL)drawCurrentFVFVertices:(const void *)vertices
                            fvf:(uint32_t)fvf
                          stride:(size_t)stride

@@ -485,6 +485,65 @@
     [self.renderer deleteTexture:target];
 }
 
+- (void)testD3D8ClearSeparatesColorAndDepthFlags
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+
+    TH08IOSD3D8DeviceAdapter *adapter =
+        [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    XCTAssertTrue([adapter clearColorEnabled:YES color:0xFF000000u
+                               depthEnabled:YES depth:1.0f]);
+    XCTAssertTrue([self.renderer setDepthCompareFunction:GL_LESS]);
+    [self.renderer setDepthTestingEnabled:YES writeEnabled:YES];
+
+    TH08IOSRendererVertex nearTriangle[3] = {
+        {-1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, -0.5f, 1.0f, 0.0f, 255, 0, 0, 255},
+        { 0.0f,  1.0f, -0.5f, 0.5f, 1.0f, 255, 0, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:nearTriangle count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    // Color-only clear must leave the near triangle's depth value intact.
+    XCTAssertTrue([adapter clearColorEnabled:YES color:0xFF0000FFu
+                               depthEnabled:NO depth:1.0f]);
+    TH08IOSRendererVertex farTriangle[3] = {
+        {-1.0f, -1.0f, 0.5f, 0.0f, 0.0f, 0, 255, 0, 255},
+        { 1.0f, -1.0f, 0.5f, 1.0f, 0.0f, 0, 255, 0, 255},
+        { 0.0f,  1.0f, 0.5f, 0.5f, 1.0f, 0, 255, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:farTriangle count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *colorCleared = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(colorCleared);
+    const uint8_t *colorBytes = (const uint8_t *)colorCleared.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertEqual(colorBytes[center], (uint8_t)0);
+    XCTAssertEqual(colorBytes[center + 1], (uint8_t)0);
+    XCTAssertEqual(colorBytes[center + 2], (uint8_t)255);
+
+    // Depth-only clear permits the farther triangle without changing the blue color first.
+    XCTAssertTrue([adapter clearColorEnabled:NO color:0u
+                               depthEnabled:YES depth:1.0f]);
+    XCTAssertTrue([self.renderer drawVertices:farTriangle count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *depthCleared = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(depthCleared);
+    const uint8_t *depthBytes = (const uint8_t *)depthCleared.bytes;
+    XCTAssertLessThan(depthBytes[center], (uint8_t)10);
+    XCTAssertGreaterThan(depthBytes[center + 1], (uint8_t)240);
+    XCTAssertLessThan(depthBytes[center + 2], (uint8_t)10);
+
+    [self.renderer setDepthTestingEnabled:NO writeEnabled:YES];
+    [self.renderer setDepthCompareFunction:GL_ALWAYS];
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    [self.renderer deleteTexture:target];
+}
+
 - (void)testReverseSubtractBlendEquation
 {
     const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];

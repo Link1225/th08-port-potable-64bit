@@ -99,6 +99,9 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
                     width:(GLsizei)width
                    height:(GLsizei)height;
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled;
+- (void)clearColorEnabled:(BOOL)clearColor
+                      red:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
+            depthEnabled:(BOOL)clearDepth depth:(GLfloat)depth;
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
            depth:(GLfloat)depth;
 - (GLuint)createTextureWithRGBA8Pixels:(const void *)pixels

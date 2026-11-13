@@ -241,6 +241,23 @@ TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
     return [renderer drawVertices:vertices count:count primitive:primitive texture:texture];
 }
 
+- (BOOL)clearColorEnabled:(BOOL)clearColor color:(uint32_t)color
+            depthEnabled:(BOOL)clearDepth depth:(float)depth
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || ![renderer isOwningContextCurrent])
+        return NO;
+    if (clearDepth && (!isfinite(depth) || depth < 0.0f || depth > 1.0f))
+        return NO;
+    const GLfloat red = ((color >> 16) & 0xFFu) / 255.0f;
+    const GLfloat green = ((color >> 8) & 0xFFu) / 255.0f;
+    const GLfloat blue = (color & 0xFFu) / 255.0f;
+    const GLfloat alpha = ((color >> 24) & 0xFFu) / 255.0f;
+    [renderer clearColorEnabled:clearColor red:red green:green blue:blue alpha:alpha
+                  depthEnabled:clearDepth depth:depth];
+    return YES;
+}
+
 - (BOOL)applyRenderStates
 {
     TH08IOSGLRenderer *renderer = _renderer;
