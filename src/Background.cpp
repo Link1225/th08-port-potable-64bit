@@ -1661,10 +1661,10 @@ void Background::SetCamera1()
     fov = ZUN_PI / 10.0f;
     cameraDistance = viewportMiddleHeight / (f32)tan(fov / 2.0f);
 
-    D3DXMatrixLookAtLH(&g_Supervisor.viewMatrix,
-                       &D3DXVECTOR3(viewportMiddleWidth, viewportMiddleHeight, cameraDistance),
-                       &D3DXVECTOR3(viewportMiddleWidth, viewportMiddleHeight, 0.0f),
-                       &D3DXVECTOR3(0.0f, -1.0f, 0.0f));
+    D3DXVECTOR3 eyePosition(viewportMiddleWidth, viewportMiddleHeight, cameraDistance);
+    D3DXVECTOR3 targetPosition(viewportMiddleWidth, viewportMiddleHeight, 0.0f);
+    D3DXVECTOR3 upDirection(0.0f, -1.0f, 0.0f);
+    D3DXMatrixLookAtLH(&g_Supervisor.viewMatrix, &eyePosition, &targetPosition, &upDirection);
     D3DXMatrixPerspectiveFovLH(&g_Supervisor.projectionMatrix, fov, aspectRatio, 1.0f, 10000.0f);
     g_Supervisor.d3dDevice->SetTransform(D3DTS_VIEW, &g_Supervisor.viewMatrix);
     g_Supervisor.d3dDevice->SetTransform(D3DTS_PROJECTION, &g_Supervisor.projectionMatrix);
