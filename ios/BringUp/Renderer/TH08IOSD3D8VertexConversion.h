@@ -2,6 +2,8 @@
 
 #include "TH08IOSD3D8VertexLayout.h"
 #include "TH08IOSD3D8Transform.h"
+#include <limits>
+#include <vector>
 
 namespace TH08IOSD3D8 {
 
@@ -71,6 +73,55 @@ static inline LayoutError ConvertVertex(const VertexLayout &layout,
     result.specularAlpha = decoded.specularAlpha;
     *output = result;
     return LayoutError::None;
+}
+
+
+enum class BatchConversionError {
+    None,
+    NullInput,
+    NullOutput,
+    CountOverflow,
+    VertexDecodeFailed
+};
+
+// Converts a complete interleaved D3D8 vertex batch transactionally. The
+// caller receives no partial output when any vertex has an invalid layout or
+// stride. Input may have padding between vertices; output is tightly packed.
+static inline BatchConversionError ConvertVertices(
+    const VertexLayout &layout,
+    const void *vertexBytes,
+    size_t stride,
+    size_t count,
+    const Matrix4 &world,
+    const Matrix4 &view,
+    const Matrix4 &projection,
+    const Matrix4 &textureTransform,
+    const Viewport &viewport,
+    std::vector<ConvertedVertex> *output)
+{
+    if (output == NULL)
+        return BatchConversionError::NullOutput;
+    if (count != 0u && vertexBytes == NULL)
+        return BatchConversionError::NullInput;
+    if (count > std::numeric_limits<size_t>::max() / sizeof(ConvertedVertex))
+        return BatchConversionError::CountOverflow;
+    if (count != 0u && stride < layout.requiredStride)
+        return BatchConversionError::VertexDecodeFailed;
+
+    std::vector<ConvertedVertex> converted;
+    converted.reserve(count);
+    const uint8_t *source = static_cast<const uint8_t *>(vertexBytes);
+    for (size_t index = 0; index < count; ++index) {
+        ConvertedVertex vertex = {};
+        const LayoutError error = ConvertVertex(
+            layout, source + index * stride, stride,
+            world, view, projection, textureTransform, viewport, &vertex);
+        if (error != LayoutError::None)
+            return BatchConversionError::VertexDecodeFailed;
+        converted.push_back(vertex);
+    }
+    output->swap(converted);
+    return BatchConversionError::None;
 }
 
 } // namespace TH08IOSD3D8

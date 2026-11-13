@@ -938,6 +938,34 @@
     XCTAssertEqualWithAccuracy(output.fogCoordinate, 0.75f, 0.0001f);
 }
 
+
+- (void)testD3D8BatchVertexConversionIsTransactional
+{
+    using namespace TH08IOSD3D8;
+    VertexLayout layout = {};
+    XCTAssertEqual(BuildVertexLayout(FVF_XYZ | FVF_DIFFUSE, &layout), LayoutError::None);
+
+    struct SourceVertex { float x, y, z; uint32_t color; };
+    const SourceVertex source[2] = {
+        {0.0f, 0.0f, 0.0f, 0xFFFFFFFFu},
+        {1.0f, 0.0f, 0.0f, 0xFF00FF00u}
+    };
+    Matrix4 identity = {};
+    for (size_t i = 0; i < 4; ++i) identity.m[i][i] = 1.0f;
+    Viewport viewport = {0.0f, 0.0f, 100.0f, 100.0f, 0.0f, 1.0f};
+    std::vector<ConvertedVertex> output(1);
+    XCTAssertEqual(ConvertVertices(layout, source, sizeof(SourceVertex), 2,
+        identity, identity, identity, identity, viewport, &output),
+        BatchConversionError::None);
+    XCTAssertEqual(output.size(), (size_t)2);
+    XCTAssertEqualWithAccuracy(output[1].x, 100.5f, 0.001f);
+
+    const size_t previousSize = output.size();
+    XCTAssertEqual(ConvertVertices(layout, source, sizeof(SourceVertex) - 1, 2,
+        identity, identity, identity, identity, viewport, &output),
+        BatchConversionError::VertexDecodeFailed);
+    XCTAssertEqual(output.size(), previousSize);
+}
 - (void)testD3D8VertexConversionDoesNotModifyOutputOnDecodeFailure
 {
     using namespace TH08IOSD3D8;
