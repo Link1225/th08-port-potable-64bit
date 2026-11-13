@@ -60,6 +60,7 @@ targets:
       - path: ../../src/pbg/PbgArchive.cpp
       - path: ../../src/pbg/PbgFile.cpp
       - path: ../Engine/TH08IOSFileHandle.cpp
+      - path: ../Engine/TH08IOSPlatformPrimitives.cpp
     preBuildScripts:
       - name: Generate engine internationalization header
         script: |

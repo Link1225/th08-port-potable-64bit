@@ -37,6 +37,8 @@ jobs:
           /tmp/th08-ios-key-mapping-tests
           c++ -std=c++98 -Iios/Engine ios/Engine/TH08IOSFileHandle.cpp ios/Tests/TH08IOSFileHandleTests.cpp -o /tmp/th08-ios-file-handle-tests
           /tmp/th08-ios-file-handle-tests
+          c++ -std=c++98 -pthread -Isrc/modern/linux/include ios/Engine/TH08IOSPlatformPrimitives.cpp ios/Tests/TH08IOSPlatformPrimitivesTests.cpp -o /tmp/th08-ios-platform-primitives-tests
+          /tmp/th08-ios-platform-primitives-tests
 
   simulator-build:
     runs-on: macos-15
