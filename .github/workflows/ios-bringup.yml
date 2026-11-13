@@ -2,7 +2,7 @@ name: iOS bring-up
 
 concurrency:
   group: ios-bring-up-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
