@@ -26,3 +26,26 @@ targets:
         PRODUCT_NAME: TH08BringUp
         SWIFT_EMIT_LOC_STRINGS: YES
         SWIFT_OBJC_BRIDGING_HEADER: TH08BringUp/TH08BringUp-Bridging-Header.h
+  TH08BringUpTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: TH08BringUp
+      - sdk: XCTest.framework
+      - sdk: OpenGLES.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.th08.bringup.tests
+        PRODUCT_NAME: TH08BringUpTests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  TH08BringUp:
+    build:
+      targets:
+        TH08BringUp: all
+        TH08BringUpTests: [test]
+    test:
+      targets:
+        - TH08BringUpTests

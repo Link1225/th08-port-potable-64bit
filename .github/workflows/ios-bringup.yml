@@ -52,7 +52,15 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
-
+      - name: Run OpenGL ES renderer tests
+        run: |
+          xcodebuild \
+            -project ios/BringUp/TH08BringUp.xcodeproj \
+            -scheme TH08BringUp \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            test
       - name: Build unsigned iOS device app
         run: |
           xcodebuild \
