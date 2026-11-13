@@ -976,6 +976,50 @@
     [self.renderer deleteTexture:target];
 }
 
+- (void)testD3D8XYZTransformRejectsNonFiniteAndDegenerateInputs
+{
+    using namespace TH08IOSD3D8;
+    Matrix4 identity = {};
+    for (size_t index = 0; index < 4; ++index)
+        identity.m[index][index] = 1.0f;
+    const float position[3] = {0.25f, -0.5f, 0.75f};
+    const Viewport viewport = {0.0f, 0.0f, 320.0f, 240.0f, 0.0f, 1.0f};
+
+    HomogeneousPosition output = {11.0f, 12.0f, 13.0f, 14.0f, 15.0f};
+    XCTAssertTrue(TransformXYZ(position, identity, identity, identity, viewport, &output));
+    const HomogeneousPosition validOutput = output;
+
+    const float invalidPosition[3] = {NAN, 0.0f, 0.0f};
+    XCTAssertFalse(TransformXYZ(invalidPosition, identity, identity, identity, viewport, &output));
+    XCTAssertEqual(output.x, validOutput.x);
+    XCTAssertEqual(output.y, validOutput.y);
+    XCTAssertEqual(output.z, validOutput.z);
+    XCTAssertEqual(output.w, validOutput.w);
+    XCTAssertEqual(output.fogCoordinate, validOutput.fogCoordinate);
+
+    Matrix4 invalidMatrix = identity;
+    invalidMatrix.m[1][2] = INFINITY;
+    XCTAssertFalse(TransformXYZ(position, identity, invalidMatrix, identity, viewport, &output));
+    XCTAssertEqual(output.x, validOutput.x);
+
+    Matrix4 zeroWProjection = identity;
+    zeroWProjection.m[3][3] = 0.0f;
+    XCTAssertFalse(TransformXYZ(position, identity, identity, zeroWProjection, viewport, &output));
+    XCTAssertEqual(output.x, validOutput.x);
+
+    Viewport invalidViewport = viewport;
+    invalidViewport.maxZ = invalidViewport.minZ;
+    XCTAssertFalse(TransformXYZ(position, identity, identity, identity, invalidViewport, &output));
+    XCTAssertEqual(output.x, validOutput.x);
+
+    Matrix4 overflowingWorld = identity;
+    overflowingWorld.m[0][0] = std::numeric_limits<float>::max();
+    const float largePosition[3] = {std::numeric_limits<float>::max(), 0.0f, 0.0f};
+    XCTAssertFalse(TransformXYZ(largePosition, overflowingWorld, identity, identity,
+                                viewport, &output));
+    XCTAssertEqual(output.x, validOutput.x);
+}
+
 - (void)testD3D8TransformedVerticesRejectInvalidRHW
 {
     using namespace TH08IOSD3D8;
