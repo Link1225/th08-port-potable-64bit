@@ -107,7 +107,7 @@
     const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
     XCTAssertNotEqual(target, 0u);
     XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:1 height:1]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
     [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
 
     TH08IOSRendererVertex vertices[3] = {
@@ -824,6 +824,9 @@
     XCTAssertEqualWithAccuracy(result.x, 3.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(result.y, 5.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(result.w, 1.0f, 0.0001f);
+
+    const float negativeW[4] = {2.5f, 4.5f, 0.75f, -1.0f};
+    XCTAssertFalse(TransformXYZRHW(negativeW, &result));
 }
 
 - (void)testD3D8TextureTransformUsesD3DMatrixConvention
