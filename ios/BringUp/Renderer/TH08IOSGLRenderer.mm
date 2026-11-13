@@ -33,14 +33,51 @@ static const char *kFragmentShader =
     "precision mediump float;\n"
     "uniform sampler2D u_texture;\n"
     "uniform float u_textured;\n"
+    "uniform vec4 u_texture_factor;\n"
+    "uniform int u_color_operation;\n"
+    "uniform int u_color_argument1;\n"
+    "uniform int u_color_argument2;\n"
+    "uniform int u_alpha_operation;\n"
+    "uniform int u_alpha_argument1;\n"
+    "uniform int u_alpha_argument2;\n"
     "uniform float u_alpha_test_enabled;\n"
     "uniform int u_alpha_test_function;\n"
     "uniform float u_alpha_test_reference;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
+    "vec4 selectArgument(int argument, vec4 textureValue) {\n"
+    "  if (argument == 0) return textureValue;\n"
+    "  if (argument == 1) return v_color;\n"
+    "  return u_texture_factor;\n"
+    "}\n"
+    "vec3 applyColorOperation(int operation, vec3 a, vec3 b) {\n"
+    "  if (operation == 0) return a;\n"
+    "  if (operation == 1) return b;\n"
+    "  if (operation == 3) return a + b;\n"
+    "  if (operation == 4) return a - b;\n"
+    "  if (operation == 5) return a + b - vec3(0.5);\n"
+    "  if (operation == 6) return min(a * b * 2.0, vec3(1.0));\n"
+    "  if (operation == 7) return min(a * b * 4.0, vec3(1.0));\n"
+    "  return a * b;\n"
+    "}\n"
+    "float applyAlphaOperation(int operation, float a, float b) {\n"
+    "  if (operation == 0) return a;\n"
+    "  if (operation == 1) return b;\n"
+    "  if (operation == 3) return a + b;\n"
+    "  if (operation == 4) return a - b;\n"
+    "  if (operation == 5) return a + b - 0.5;\n"
+    "  if (operation == 6) return min(a * b * 2.0, 1.0);\n"
+    "  if (operation == 7) return min(a * b * 4.0, 1.0);\n"
+    "  return a * b;\n"
+    "}\n"
     "void main() {\n"
     "  vec4 texel = mix(vec4(1.0), texture2D(u_texture, v_texcoord), u_textured);\n"
-    "  vec4 result = texel * v_color;\n"
+    "  vec4 colorA = selectArgument(u_color_argument1, texel);\n"
+    "  vec4 colorB = selectArgument(u_color_argument2, texel);\n"
+    "  vec4 alphaA = selectArgument(u_alpha_argument1, texel);\n"
+    "  vec4 alphaB = selectArgument(u_alpha_argument2, texel);\n"
+    "  vec4 result = vec4(applyColorOperation(u_color_operation, colorA.rgb, colorB.rgb),\n"
+    "                     applyAlphaOperation(u_alpha_operation, alphaA.a, alphaB.a));\n"
     "  if (u_alpha_test_enabled > 0.5) {\n"
     "    float a = result.a;\n"
     "    bool pass = true;\n"
@@ -185,6 +222,20 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLint _alphaTestEnabledLocation;
     GLint _alphaTestFunctionLocation;
     GLint _alphaTestReferenceLocation;
+    GLint _textureFactorLocation;
+    GLint _colorOperationLocation;
+    GLint _colorArgument1Location;
+    GLint _colorArgument2Location;
+    GLint _alphaOperationLocation;
+    GLint _alphaArgument1Location;
+    GLint _alphaArgument2Location;
+    GLint _textureFactor[4];
+    GLint _colorOperation;
+    GLint _colorArgument1;
+    GLint _colorArgument2;
+    GLint _alphaOperation;
+    GLint _alphaArgument1;
+    GLint _alphaArgument2;
     GLfloat _transform[16];
     BOOL _alphaTestEnabled;
     GLint _alphaTestFunction;
@@ -239,11 +290,25 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaTestEnabledLocation = glGetUniformLocation(_program, "u_alpha_test_enabled");
     _alphaTestFunctionLocation = glGetUniformLocation(_program, "u_alpha_test_function");
     _alphaTestReferenceLocation = glGetUniformLocation(_program, "u_alpha_test_reference");
+    _textureFactorLocation = glGetUniformLocation(_program, "u_texture_factor");
+    _colorOperationLocation = glGetUniformLocation(_program, "u_color_operation");
+    _colorArgument1Location = glGetUniformLocation(_program, "u_color_argument1");
+    _colorArgument2Location = glGetUniformLocation(_program, "u_color_argument2");
+    _alphaOperationLocation = glGetUniformLocation(_program, "u_alpha_operation");
+    _alphaArgument1Location = glGetUniformLocation(_program, "u_alpha_argument1");
+    _alphaArgument2Location = glGetUniformLocation(_program, "u_alpha_argument2");
     for (NSUInteger index = 0; index < 16; ++index)
         _transform[index] = (index % 5) == 0 ? 1.0f : 0.0f;
     _alphaTestEnabled = NO;
     _alphaTestFunction = 7;
     _alphaTestReference = 0.0f;
+    _textureFactor[0] = _textureFactor[1] = _textureFactor[2] = _textureFactor[3] = 255;
+    _colorOperation = TH08IOSRendererTextureOperationModulate;
+    _colorArgument1 = TH08IOSRendererTextureArgumentTexture;
+    _colorArgument2 = TH08IOSRendererTextureArgumentDiffuse;
+    _alphaOperation = TH08IOSRendererTextureOperationModulate;
+    _alphaArgument1 = TH08IOSRendererTextureArgumentTexture;
+    _alphaArgument2 = TH08IOSRendererTextureArgumentDiffuse;
     _blendingEnabled = NO;
     _depthTestingEnabled = NO;
     _depthCompareFunction = GL_LESS;
@@ -319,6 +384,46 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _sourceFactor = sourceFactor;
     _destinationFactor = destinationFactor;
     return YES;
+}
+
+- (BOOL)setTextureStageColorOperation:(TH08IOSRendererTextureOperation)colorOperation
+                      colorArgument1:(TH08IOSRendererTextureArgument)colorArgument1
+                      colorArgument2:(TH08IOSRendererTextureArgument)colorArgument2
+                        alphaOperation:(TH08IOSRendererTextureOperation)alphaOperation
+                      alphaArgument1:(TH08IOSRendererTextureArgument)alphaArgument1
+                      alphaArgument2:(TH08IOSRendererTextureArgument)alphaArgument2
+{
+    if ([EAGLContext currentContext] != _context ||
+        colorOperation < TH08IOSRendererTextureOperationSelectArg1 ||
+        colorOperation > TH08IOSRendererTextureOperationModulate4X ||
+        alphaOperation < TH08IOSRendererTextureOperationSelectArg1 ||
+        alphaOperation > TH08IOSRendererTextureOperationModulate4X ||
+        colorArgument1 < TH08IOSRendererTextureArgumentTexture ||
+        colorArgument1 > TH08IOSRendererTextureArgumentFactor ||
+        colorArgument2 < TH08IOSRendererTextureArgumentTexture ||
+        colorArgument2 > TH08IOSRendererTextureArgumentFactor ||
+        alphaArgument1 < TH08IOSRendererTextureArgumentTexture ||
+        alphaArgument1 > TH08IOSRendererTextureArgumentFactor ||
+        alphaArgument2 < TH08IOSRendererTextureArgumentTexture ||
+        alphaArgument2 > TH08IOSRendererTextureArgumentFactor)
+        return NO;
+    _colorOperation = colorOperation;
+    _colorArgument1 = colorArgument1;
+    _colorArgument2 = colorArgument2;
+    _alphaOperation = alphaOperation;
+    _alphaArgument1 = alphaArgument1;
+    _alphaArgument2 = alphaArgument2;
+    return YES;
+}
+
+- (void)setTextureFactorRed:(GLubyte)red green:(GLubyte)green blue:(GLubyte)blue alpha:(GLubyte)alpha
+{
+    if ([EAGLContext currentContext] != _context)
+        return;
+    _textureFactor[0] = red;
+    _textureFactor[1] = green;
+    _textureFactor[2] = blue;
+    _textureFactor[3] = alpha;
 }
 
 - (BOOL)setBlendEquation:(GLenum)equation
@@ -686,6 +791,15 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glUniform1f(_alphaTestEnabledLocation, _alphaTestEnabled ? 1.0f : 0.0f);
     glUniform1i(_alphaTestFunctionLocation, _alphaTestFunction);
     glUniform1f(_alphaTestReferenceLocation, _alphaTestReference);
+    glUniform4f(_textureFactorLocation,
+                _textureFactor[0] / 255.0f, _textureFactor[1] / 255.0f,
+                _textureFactor[2] / 255.0f, _textureFactor[3] / 255.0f);
+    glUniform1i(_colorOperationLocation, _colorOperation);
+    glUniform1i(_colorArgument1Location, _colorArgument1);
+    glUniform1i(_colorArgument2Location, _colorArgument2);
+    glUniform1i(_alphaOperationLocation, _alphaOperation);
+    glUniform1i(_alphaArgument1Location, _alphaArgument1);
+    glUniform1i(_alphaArgument2Location, _alphaArgument2);
     [self applyDrawState];
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);

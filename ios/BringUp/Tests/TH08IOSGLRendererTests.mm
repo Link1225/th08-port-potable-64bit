@@ -505,4 +505,45 @@
     [self.renderer deleteTexture:target];
 }
 
+
+- (void)testTextureStageCanSelectTextureFactor
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:0.0f depth:1.0f];
+    XCTAssertTrue([self.renderer setTextureStageColorOperation:TH08IOSRendererTextureOperationSelectArg1
+                                               colorArgument1:TH08IOSRendererTextureArgumentFactor
+                                               colorArgument2:TH08IOSRendererTextureArgumentDiffuse
+                                                 alphaOperation:TH08IOSRendererTextureOperationSelectArg1
+                                               alphaArgument1:TH08IOSRendererTextureArgumentFactor
+                                               alphaArgument2:TH08IOSRendererTextureArgumentDiffuse]);
+    [self.renderer setTextureFactorRed:64 green:128 blue:192 alpha:255];
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 255, 255, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 255, 255, 255},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 255, 255, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertEqualWithAccuracy(bytes[center], 64, 3);
+    XCTAssertEqualWithAccuracy(bytes[center + 1], 128, 3);
+    XCTAssertEqualWithAccuracy(bytes[center + 2], 192, 3);
+    XCTAssertEqualWithAccuracy(bytes[center + 3], 255, 3);
+
+    XCTAssertFalse([self.renderer setTextureStageColorOperation:(TH08IOSRendererTextureOperation)99
+                                                colorArgument1:TH08IOSRendererTextureArgumentTexture
+                                                colorArgument2:TH08IOSRendererTextureArgumentDiffuse
+                                                  alphaOperation:TH08IOSRendererTextureOperationModulate
+                                                alphaArgument1:TH08IOSRendererTextureArgumentTexture
+                                                alphaArgument2:TH08IOSRendererTextureArgumentDiffuse]);
+    [self.renderer deleteTexture:target];
+}
+
 @end

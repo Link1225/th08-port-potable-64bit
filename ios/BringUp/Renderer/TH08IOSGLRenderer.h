@@ -16,6 +16,23 @@ typedef struct TH08IOSRendererVertex {
     GLubyte alpha;
 } TH08IOSRendererVertex;
 
+typedef NS_ENUM(GLint, TH08IOSRendererTextureOperation) {
+    TH08IOSRendererTextureOperationSelectArg1 = 0,
+    TH08IOSRendererTextureOperationSelectArg2 = 1,
+    TH08IOSRendererTextureOperationModulate = 2,
+    TH08IOSRendererTextureOperationAdd = 3,
+    TH08IOSRendererTextureOperationSubtract = 4,
+    TH08IOSRendererTextureOperationAddSigned = 5,
+    TH08IOSRendererTextureOperationModulate2X = 6,
+    TH08IOSRendererTextureOperationModulate4X = 7
+};
+
+typedef NS_ENUM(GLint, TH08IOSRendererTextureArgument) {
+    TH08IOSRendererTextureArgumentTexture = 0,
+    TH08IOSRendererTextureArgumentDiffuse = 1,
+    TH08IOSRendererTextureArgumentFactor = 2
+};
+
 typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
     TH08IOSRendererPrimitivePoints = GL_POINTS,
     TH08IOSRendererPrimitiveLines = GL_LINES,
@@ -39,6 +56,13 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
         destinationFactor:(GLenum)destinationFactor;
 - (BOOL)setBlendEquation:(GLenum)equation;
 - (BOOL)setColorWriteMaskRed:(BOOL)red green:(BOOL)green blue:(BOOL)blue alpha:(BOOL)alpha;
+- (BOOL)setTextureStageColorOperation:(TH08IOSRendererTextureOperation)colorOperation
+                      colorArgument1:(TH08IOSRendererTextureArgument)colorArgument1
+                      colorArgument2:(TH08IOSRendererTextureArgument)colorArgument2
+                        alphaOperation:(TH08IOSRendererTextureOperation)alphaOperation
+                      alphaArgument1:(TH08IOSRendererTextureArgument)alphaArgument1
+                      alphaArgument2:(TH08IOSRendererTextureArgument)alphaArgument2;
+- (void)setTextureFactorRed:(GLubyte)red green:(GLubyte)green blue:(GLubyte)blue alpha:(GLubyte)alpha;
 // ES2 non-mipmap sampling modes. Defaults are linear filtering and clamp-to-edge.
 - (BOOL)setTextureMinificationFilter:(GLenum)minificationFilter
                     magnificationFilter:(GLenum)magnificationFilter
