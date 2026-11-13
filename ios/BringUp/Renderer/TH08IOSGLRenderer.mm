@@ -348,6 +348,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
         !IsValidTextureSize(width, height, rowBytes))
         return 0;
 
+    // Attribute any GL error below to this upload, not to an earlier caller.
+    while (glGetError() != GL_NO_ERROR) {}
     GLuint texture = 0;
     glGenTextures(1, &texture);
     if (texture == 0)
@@ -374,6 +376,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
         uint8_t *destination = static_cast<uint8_t *>(packed.mutableBytes);
         if (destination == NULL) {
             glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTexture));
+            glDeleteTextures(1, &texture);
             return 0;
         }
         for (GLsizei row = 0; row < height; ++row)
