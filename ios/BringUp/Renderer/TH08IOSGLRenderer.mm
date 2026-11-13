@@ -2,18 +2,20 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <math.h>
 #include <string.h>
 
 namespace {
 
 static const char *kVertexShader =
     "attribute vec3 a_position;\n"
+    "uniform mat4 u_transform;\n"
     "attribute vec2 a_texcoord;\n"
     "attribute vec4 a_color;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
     "void main() {\n"
-    "  gl_Position = vec4(a_position, 1.0);\n"
+    "  gl_Position = u_transform * vec4(a_position, 1.0);\n"
     "  v_texcoord = a_texcoord;\n"
     "  v_color = a_color;\n"
     "}\n";
@@ -22,11 +24,27 @@ static const char *kFragmentShader =
     "precision mediump float;\n"
     "uniform sampler2D u_texture;\n"
     "uniform float u_textured;\n"
+    "uniform float u_alpha_test_enabled;\n"
+    "uniform int u_alpha_test_function;\n"
+    "uniform float u_alpha_test_reference;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
     "void main() {\n"
     "  vec4 texel = mix(vec4(1.0), texture2D(u_texture, v_texcoord), u_textured);\n"
-    "  gl_FragColor = texel * v_color;\n"
+    "  vec4 result = texel * v_color;\n"
+    "  if (u_alpha_test_enabled > 0.5) {\n"
+    "    float a = result.a;\n"
+    "    bool pass = true;\n"
+    "    if (u_alpha_test_function == 0) pass = false;\n"
+    "    else if (u_alpha_test_function == 1) pass = a < u_alpha_test_reference;\n"
+    "    else if (u_alpha_test_function == 2) pass = a == u_alpha_test_reference;\n"
+    "    else if (u_alpha_test_function == 3) pass = a <= u_alpha_test_reference;\n"
+    "    else if (u_alpha_test_function == 4) pass = a > u_alpha_test_reference;\n"
+    "    else if (u_alpha_test_function == 5) pass = a != u_alpha_test_reference;\n"
+    "    else if (u_alpha_test_function == 6) pass = a >= u_alpha_test_reference;\n"
+    "    if (!pass) discard;\n"
+    "  }\n"
+    "  gl_FragColor = result;\n"
     "}\n";
 
 GLuint CompileShader(GLenum type, const char *source)
@@ -93,6 +111,14 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     GLuint _vertexBuffer;
     GLint _samplerLocation;
     GLint _texturedLocation;
+    GLint _transformLocation;
+    GLint _alphaTestEnabledLocation;
+    GLint _alphaTestFunctionLocation;
+    GLint _alphaTestReferenceLocation;
+    GLfloat _transform[16];
+    BOOL _alphaTestEnabled;
+    GLint _alphaTestFunction;
+    GLfloat _alphaTestReference;
     BOOL _blendingEnabled;
     BOOL _depthTestingEnabled;
     BOOL _depthWriteEnabled;
@@ -124,6 +150,15 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
 
     _samplerLocation = glGetUniformLocation(_program, "u_texture");
     _texturedLocation = glGetUniformLocation(_program, "u_textured");
+    _transformLocation = glGetUniformLocation(_program, "u_transform");
+    _alphaTestEnabledLocation = glGetUniformLocation(_program, "u_alpha_test_enabled");
+    _alphaTestFunctionLocation = glGetUniformLocation(_program, "u_alpha_test_function");
+    _alphaTestReferenceLocation = glGetUniformLocation(_program, "u_alpha_test_reference");
+    for (NSUInteger index = 0; index < 16; ++index)
+        _transform[index] = (index % 5) == 0 ? 1.0f : 0.0f;
+    _alphaTestEnabled = NO;
+    _alphaTestFunction = 7;
+    _alphaTestReference = 0.0f;
     _blendingEnabled = NO;
     _depthTestingEnabled = NO;
     _depthWriteEnabled = YES;
@@ -159,6 +194,42 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     _blendingEnabled = enabled;
     _sourceFactor = sourceFactor;
     _destinationFactor = destinationFactor;
+}
+
+- (BOOL)setTransformMatrix:(const GLfloat *)columnMajorMatrix
+{
+    if (columnMajorMatrix == NULL)
+        return NO;
+    for (NSUInteger index = 0; index < 16; ++index) {
+        if (!isfinite(columnMajorMatrix[index]))
+            return NO;
+    }
+    memcpy(_transform, columnMajorMatrix, sizeof(_transform));
+    return YES;
+}
+
+- (BOOL)setAlphaTestEnabled:(BOOL)enabled
+            compareFunction:(GLenum)compareFunction
+                  reference:(GLfloat)reference
+{
+    GLint function = 7;
+    switch (compareFunction) {
+    case GL_NEVER: function = 0; break;
+    case GL_LESS: function = 1; break;
+    case GL_EQUAL: function = 2; break;
+    case GL_LEQUAL: function = 3; break;
+    case GL_GREATER: function = 4; break;
+    case GL_NOTEQUAL: function = 5; break;
+    case GL_GEQUAL: function = 6; break;
+    case GL_ALWAYS: function = 7; break;
+    default: return NO;
+    }
+    if (!isfinite(reference))
+        return NO;
+    _alphaTestEnabled = enabled;
+    _alphaTestFunction = function;
+    _alphaTestReference = reference < 0.0f ? 0.0f : (reference > 1.0f ? 1.0f : reference);
+    return YES;
 }
 
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled
@@ -251,7 +322,12 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
         vertexBytes > static_cast<size_t>(PTRDIFF_MAX))
         return NO;
 
+    while (glGetError() != GL_NO_ERROR) {}
     glUseProgram(_program);
+    glUniformMatrix4fv(_transformLocation, 1, GL_FALSE, _transform);
+    glUniform1f(_alphaTestEnabledLocation, _alphaTestEnabled ? 1.0f : 0.0f);
+    glUniform1i(_alphaTestFunctionLocation, _alphaTestFunction);
+    glUniform1f(_alphaTestReferenceLocation, _alphaTestReference);
     [self applyDrawState];
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);

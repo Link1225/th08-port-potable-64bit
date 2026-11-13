@@ -34,6 +34,12 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
 - (void)setBlendingEnabled:(BOOL)enabled
              sourceFactor:(GLenum)sourceFactor
         destinationFactor:(GLenum)destinationFactor;
+// Matrix is a standard column-major OpenGL 4x4 transform; defaults to identity.
+- (BOOL)setTransformMatrix:(const GLfloat *)columnMajorMatrix;
+// Alpha comparison uses OpenGL ES comparison enums (GL_NEVER ... GL_ALWAYS).
+- (BOOL)setAlphaTestEnabled:(BOOL)enabled
+            compareFunction:(GLenum)compareFunction
+                  reference:(GLfloat)reference;
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled;
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
            depth:(GLfloat)depth;
