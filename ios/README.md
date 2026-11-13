@@ -27,13 +27,32 @@ restores its owning context during teardown to release GL objects safely. It is 
 the bring-up target so both Simulator and device SDK builds validate the iOS
 graphics API integration.
 
-This is only a renderer foundation, not a Direct3D 8 replacement. It does not
-yet implement the original engine's matrix stack and D3D8 transform/viewport
-conventions, transformed/lit vertex formats, fog semantics, texture-stage
-combiner behavior, render-target readback, full texture formats, or resource
-lifecycle beyond the basic render-target texture/FBO ownership. The game engine does not call it yet. The original
-Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
-platform implementation.
+The current state subset includes:
+
+- Blend enable, validated source/destination factors, and blend equations
+  (add, subtract, and reverse-subtract).
+- Independent RGBA color-write masks. Clear operations temporarily override
+  color/depth write masks and scissor state, then restore the caller's state.
+- Depth testing, depth write enable, and configurable depth comparison.
+- Scissor rectangles, viewport control, and RGBA8 framebuffer readback.
+- Texture sampling with non-mipmap nearest/linear filters and clamp, repeat,
+  or mirrored-repeat wrapping.
+- A shader-based texture-stage subset: select argument 1/2, modulate, add,
+  subtract, add-signed, modulate-2x, and modulate-4x, with texture, diffuse
+  vertex color, or constant texture-factor arguments for color and alpha.
+- Per-vertex linear fog coordinates with configurable fog color and start/end.
+- A column-major 4×4 matrix uniform and fragment-shader alpha comparisons.
+
+This is still a renderer foundation, not a Direct3D 8 replacement. The
+texture-stage subset does not cover every D3D8 operation or argument modifier;
+there is no complete D3D8 state translation layer, matrix stack, original
+transform/viewport convention adapter, transformed/lit vertex pipeline,
+texture format conversion, mipmap handling, or complete device/resource
+lifecycle. The fog input is an explicit per-vertex scalar and has not yet been
+matched against the original engine's fog-coordinate generation. The game
+engine does not call this renderer yet. The original Win32/Direct3D 8 entry
+point and SDL2/desktop-OpenGL runtime still need an iOS platform
+implementation.
 
 ## Bring-up app
 
