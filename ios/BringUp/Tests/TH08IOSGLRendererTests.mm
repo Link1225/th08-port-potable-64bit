@@ -2,6 +2,8 @@
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
 
+#include <vector>
+
 #import "../Renderer/TH08IOSGLRenderer.h"
 #import "../Renderer/TH08IOSD3D8VertexLayout.h"
 #import "../Renderer/TH08IOSD3D8StateMapping.h"
@@ -852,20 +854,20 @@
     VertexLayout layout = {};
     XCTAssertEqual(BuildVertexLayout(fvf, &layout), LayoutError::None);
 
-    uint8_t bytes[layout.requiredStride] = {};
+    std::vector<uint8_t> bytes(layout.requiredStride, 0);
     const float xyz[3] = {0.25f, -0.5f, 0.75f};
     const uint32_t color = 0x80402010u;
     const float uv[2] = {0.2f, 0.4f};
-    memcpy(bytes, xyz, sizeof(xyz));
-    memcpy(bytes + layout.diffuseOffset, &color, sizeof(color));
-    memcpy(bytes + layout.textureCoordinateOffset, uv, sizeof(uv));
+    memcpy(bytes.data(), xyz, sizeof(xyz));
+    memcpy(bytes.data() + layout.diffuseOffset, &color, sizeof(color));
+    memcpy(bytes.data() + layout.textureCoordinateOffset, uv, sizeof(uv));
 
     Matrix4 identity = {};
     for (NSUInteger index = 0; index < 4; ++index)
         identity.m[index][index] = 1.0f;
     Viewport viewport = {0, 0, 320, 240, 0, 1};
     ConvertedVertex output = {};
-    XCTAssertEqual(ConvertVertex(layout, bytes, sizeof(bytes), identity, identity,
+    XCTAssertEqual(ConvertVertex(layout, bytes.data(), bytes.size(), identity, identity,
                                  identity, identity, viewport, &output), LayoutError::None);
     XCTAssertEqualWithAccuracy(output.x, 160.5f + 0.25f * 160.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(output.y, 120.5f + 0.5f * 120.0f, 0.0001f);
