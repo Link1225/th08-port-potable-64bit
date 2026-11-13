@@ -186,6 +186,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     BOOL _blendingEnabled;
     BOOL _depthTestingEnabled;
     GLenum _depthCompareFunction;
+    BOOL _scissorEnabled;
+    GLint _scissorRect[4];
     BOOL _depthWriteEnabled;
     GLenum _sourceFactor;
     GLenum _destinationFactor;
@@ -237,6 +239,9 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _blendingEnabled = NO;
     _depthTestingEnabled = NO;
     _depthCompareFunction = GL_LESS;
+    _scissorEnabled = NO;
+    _scissorRect[0] = _scissorRect[1] = 0;
+    _scissorRect[2] = _scissorRect[3] = 0;
     _depthWriteEnabled = YES;
     _sourceFactor = GL_SRC_ALPHA;
     _destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
@@ -368,6 +373,19 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     return YES;
 }
 
+- (BOOL)setScissorEnabled:(BOOL)enabled x:(GLint)x y:(GLint)y width:(GLsizei)width height:(GLsizei)height
+{
+    if ([EAGLContext currentContext] != _context ||
+        (enabled && (width <= 0 || height <= 0)))
+        return NO;
+    _scissorEnabled = enabled;
+    _scissorRect[0] = x;
+    _scissorRect[1] = y;
+    _scissorRect[2] = width;
+    _scissorRect[3] = height;
+    return YES;
+}
+
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled
 {
     if ([EAGLContext currentContext] != _context)
@@ -389,6 +407,12 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     else
         glDisable(GL_DEPTH_TEST);
     glDepthFunc(_depthCompareFunction);
+    if (_scissorEnabled) {
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(_scissorRect[0], _scissorRect[1], _scissorRect[2], _scissorRect[3]);
+    } else {
+        glDisable(GL_SCISSOR_TEST);
+    }
     glDepthMask(_depthWriteEnabled ? GL_TRUE : GL_FALSE);
 }
 
@@ -397,9 +421,23 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 {
     if ([EAGLContext currentContext] != _context)
         return;
+    const GLboolean scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    GLint previousScissor[4] = {0, 0, 0, 0};
+    GLboolean previousDepthWrite = GL_TRUE;
+    glGetIntegerv(GL_SCISSOR_BOX, previousScissor);
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthWrite);
+    if (scissorWasEnabled)
+        glDisable(GL_SCISSOR_TEST);
+    glDepthMask(GL_TRUE);
     glClearColor(red, green, blue, alpha);
     glClearDepthf(depth);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDepthMask(previousDepthWrite);
+    if (scissorWasEnabled) {
+        glScissor(previousScissor[0], previousScissor[1],
+                  previousScissor[2], previousScissor[3]);
+        glEnable(GL_SCISSOR_TEST);
+    }
 }
 
 - (GLuint)createTextureWithRGBA8Pixels:(const void *)pixels

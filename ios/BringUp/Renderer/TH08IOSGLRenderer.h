@@ -49,6 +49,12 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
             compareFunction:(GLenum)compareFunction
                   reference:(GLfloat)reference;
 - (BOOL)setDepthCompareFunction:(GLenum)compareFunction;
+// Scissor coordinates use OpenGL's bottom-left origin.
+- (BOOL)setScissorEnabled:(BOOL)enabled
+                        x:(GLint)x
+                        y:(GLint)y
+                    width:(GLsizei)width
+                   height:(GLsizei)height;
 - (void)setDepthTestingEnabled:(BOOL)enabled writeEnabled:(BOOL)writeEnabled;
 - (void)clearRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
            depth:(GLfloat)depth;

@@ -83,6 +83,46 @@
     XCTAssertTrue([self.renderer setDepthCompareFunction:GL_LESS]);
 }
 
+
+- (void)testScissorClipsDrawsAndClearIgnoresScissor
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    XCTAssertTrue([self.renderer setScissorEnabled:YES x:2 y:2 width:3 height:3]);
+    XCTAssertFalse([self.renderer setScissorEnabled:YES x:0 y:0 width:0 height:3]);
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255},
+        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 0, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+    NSData *clippedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(clippedPixels);
+    const uint8_t *clipped = (const uint8_t *)clippedPixels.bytes;
+    const NSUInteger inside = (NSUInteger)(3u * 8u + 3u) * 4u;
+    const NSUInteger outside = (NSUInteger)(3u * 8u + 6u) * 4u;
+    XCTAssertGreaterThan(clipped[inside], (uint8_t)200);
+    XCTAssertLessThan(clipped[outside], (uint8_t)20);
+
+    [self.renderer clearRed:0.0f green:0.0f blue:1.0f alpha:1.0f depth:1.0f];
+    NSData *clearedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(clearedPixels);
+    const uint8_t *cleared = (const uint8_t *)clearedPixels.bytes;
+    XCTAssertLessThan(cleared[outside], (uint8_t)20);
+    XCTAssertGreaterThan(cleared[outside + 2], (uint8_t)200);
+    XCTAssertTrue([self.renderer setScissorEnabled:NO x:0 y:0 width:0 height:0]);
+
+    [self.renderer deleteTexture:target];
+}
+
 @end
 
 @implementation TH08IOSGLRendererTests
