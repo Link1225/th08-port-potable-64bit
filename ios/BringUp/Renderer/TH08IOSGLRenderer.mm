@@ -266,6 +266,14 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 {
     if ([EAGLContext currentContext] != _context || width <= 0 || height <= 0)
         return NO;
+    GLint framebuffer = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebuffer);
+    if (static_cast<GLuint>(framebuffer) == _defaultFramebuffer) {
+        _defaultViewport[0] = x;
+        _defaultViewport[1] = y;
+        _defaultViewport[2] = width;
+        _defaultViewport[3] = height;
+    }
     glViewport(x, y, width, height);
     _hasViewport = YES;
     return YES;
@@ -513,8 +521,11 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     if (it != _renderTargets.end()) {
         GLint currentFramebuffer = 0;
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFramebuffer);
-        if (static_cast<GLuint>(currentFramebuffer) == it->second.framebuffer)
+        if (static_cast<GLuint>(currentFramebuffer) == it->second.framebuffer) {
             glBindFramebuffer(GL_FRAMEBUFFER, _defaultFramebuffer);
+            glViewport(_defaultViewport[0], _defaultViewport[1],
+                       _defaultViewport[2], _defaultViewport[3]);
+        }
         if (it->second.framebuffer != 0)
             glDeleteFramebuffers(1, &it->second.framebuffer);
         if (it->second.depthBuffer != 0)
