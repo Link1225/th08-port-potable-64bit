@@ -933,6 +933,36 @@
     XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
     XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
 
+    struct D3D8TransformedVertex {
+        float x;
+        float y;
+        float z;
+        float rhw;
+        uint32_t diffuse;
+    };
+    const D3D8TransformedVertex transformedVertices[3] = {
+        {0.0f, 8.0f, 0.5f, 1.0f, 0xFFFF0000u},
+        {8.0f, 8.0f, 0.5f, 1.0f, 0xFFFF0000u},
+        {4.0f, 0.0f, 0.5f, 1.0f, 0xFFFF0000u}
+    };
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+    XCTAssertTrue([adapter drawFVFVertices:transformedVertices
+                                       fvf:TH08IOSD3D8::FVF_XYZRHW | TH08IOSD3D8::FVF_DIFFUSE
+                                     stride:sizeof(D3D8TransformedVertex)
+                                      count:3
+                                      world:identity
+                                       view:identity
+                                 projection:identity
+                          textureTransform:identity
+                                   viewport:viewport
+                                  primitive:TH08IOSRendererPrimitiveTriangles]);
+    pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    bytes = (const uint8_t *)pixels.bytes;
+    XCTAssertGreaterThan(bytes[center], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+
     XCTAssertTrue([self.renderer bindRenderTargetTexture:0]);
     [self.renderer deleteTexture:target];
 }
