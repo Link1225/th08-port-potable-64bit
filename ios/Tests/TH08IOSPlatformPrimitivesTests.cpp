@@ -27,6 +27,19 @@ static void *IncrementWorker(void *argument)
     return NULL;
 }
 
+struct ThreadArguments
+{
+    volatile DWORD *result;
+};
+
+static DWORD WINAPI ThreadWorker(LPVOID raw)
+{
+    ThreadArguments *arguments = static_cast<ThreadArguments *>(raw);
+    Sleep(20);
+    *arguments->result = 7;
+    return 7;
+}
+
 int main()
 {
     CRITICAL_SECTION section;
@@ -97,20 +110,10 @@ int main()
     assert(FindClose(INVALID_HANDLE_VALUE) == FALSE);
 
     volatile DWORD threadResult = 0;
-    struct ThreadArguments
-    {
-        volatile DWORD *result;
-    };
     ThreadArguments arguments = {&threadResult};
     DWORD createdThreadId = 0;
-    HANDLE thread = CreateThread(NULL, 0,
-        [](LPVOID raw) -> DWORD {
-            ThreadArguments *args = static_cast<ThreadArguments *>(raw);
-            Sleep(20);
-            *args->result = 7;
-            return 7;
-        },
-        &arguments, 0, &createdThreadId);
+    HANDLE thread = CreateThread(NULL, 0, ThreadWorker,
+                                 &arguments, 0, &createdThreadId);
     assert(thread != NULL);
     assert(createdThreadId != 0);
     assert(WaitForSingleObject(thread, 1) == WAIT_TIMEOUT);
