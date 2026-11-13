@@ -62,6 +62,9 @@ typedef struct TH08IOSD3D8SurfaceDescription {
 - (BOOL)copyFromSurface:(TH08IOSD3D8Surface *)source
              sourceRect:(nullable const TH08IOSD3D8Rect *)sourceRect
         destinationPoint:(TH08IOSD3D8Point)destinationPoint;
+- (BOOL)replaceWithRGBA8Pixels:(const void *)pixels
+                         rowBytes:(size_t)rowBytes
+                        bottomUp:(BOOL)bottomUp;
 - (nullable NSData *)copyRGBA8Pixels;
 
 @property(nonatomic, readonly) uint32_t width;

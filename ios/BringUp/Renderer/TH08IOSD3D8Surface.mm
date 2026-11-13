@@ -338,6 +338,44 @@ bool ResolveRect(const TH08IOSD3D8Rect *requested, uint32_t width, uint32_t heig
     return YES;
 }
 
+- (BOOL)replaceWithRGBA8Pixels:(const void *)pixels
+                         rowBytes:(size_t)rowBytes
+                        bottomUp:(BOOL)bottomUp
+{
+    if (_storage == nullptr || pixels == nullptr || _storage->locked ||
+        _format == TH08IOSD3D8PixelFormatD16 ||
+        static_cast<size_t>(_width) > std::numeric_limits<size_t>::max() / 4u)
+        return NO;
+    const size_t inputRowBytes = static_cast<size_t>(_width) * 4u;
+    if (rowBytes < inputRowBytes ||
+        static_cast<size_t>(_height - 1u) >
+            (std::numeric_limits<size_t>::max() - inputRowBytes) / rowBytes)
+        return NO;
+
+    const uint8_t *input = static_cast<const uint8_t *>(pixels);
+    const size_t outputBpp = BytesPerPixel(_format);
+    for (uint32_t y = 0; y < _height; ++y) {
+        const uint32_t sourceY = bottomUp ? (_height - 1u - y) : y;
+        const uint8_t *sourceRow = input + static_cast<size_t>(sourceY) * rowBytes;
+        uint8_t *destinationRow = _storage->pixels.data() +
+            static_cast<size_t>(y) * _storage->pitch;
+        for (uint32_t x = 0; x < _width; ++x) {
+            const uint8_t *sourcePixel = sourceRow + static_cast<size_t>(x) * 4u;
+            const std::array<uint8_t, 4> rgba = {{
+                sourcePixel[0], sourcePixel[1], sourcePixel[2], sourcePixel[3]
+            }};
+            if (!EncodePixel(destinationRow + static_cast<size_t>(x) * outputBpp,
+                             _format, rgba))
+                return NO;
+        }
+    }
+    if (_storage->generation == std::numeric_limits<uint64_t>::max())
+        _storage->generation = 1u;
+    else
+        ++_storage->generation;
+    return YES;
+}
+
 - (NSData *)copyRGBA8Pixels
 {
     if (_storage == nullptr || _storage->locked ||

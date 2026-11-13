@@ -1473,6 +1473,51 @@
     [self.renderer deleteTexture:target];
 }
 
+- (void)testD3D8SurfaceAcceptsBottomUpRGBAReadback
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:1 height:2 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    XCTAssertNotNil(surface);
+    const uint8_t bottomUp[8] = {
+        0u, 0u, 255u, 255u,  // bottom row: blue
+        255u, 0u, 0u, 255u   // top row: red
+    };
+    XCTAssertTrue([surface replaceWithRGBA8Pixels:bottomUp rowBytes:4u bottomUp:YES]);
+    NSData *rgba = [surface copyRGBA8Pixels];
+    XCTAssertNotNil(rgba);
+    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
+    XCTAssertEqual(bytes[0], 255u);
+    XCTAssertEqual(bytes[1], 0u);
+    XCTAssertEqual(bytes[2], 0u);
+    XCTAssertEqual(bytes[4], 0u);
+    XCTAssertEqual(bytes[5], 0u);
+    XCTAssertEqual(bytes[6], 255u);
+}
+
+- (void)testD3D8AdapterCopiesFramebufferIntoSurface
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:4 height:4 format:TH08IOSD3D8PixelFormatR5G6B5];
+    XCTAssertNotNil(surface);
+    TH08IOSD3D8DeviceAdapter *adapter =
+        [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    [self.renderer clearRed:0.25f green:0.5f blue:0.75f alpha:1.0f depth:1.0f];
+    XCTAssertTrue([adapter copyCurrentFramebufferToSurface:surface]);
+    NSData *rgba = [surface copyRGBA8Pixels];
+    XCTAssertNotNil(rgba);
+    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
+    XCTAssertEqualWithAccuracy(bytes[0], 66u, 8u);
+    XCTAssertEqualWithAccuracy(bytes[1], 130u, 8u);
+    XCTAssertEqualWithAccuracy(bytes[2], 189u, 8u);
+
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockReadOnly
+                         lockedRect:&locked]);
+    XCTAssertFalse([adapter copyCurrentFramebufferToSurface:surface]);
+    XCTAssertTrue([surface unlockRect]);
+}
+
 - (void)testD3D8SurfaceDescriptionAndSubrectangleLockPitch
 {
     TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]

@@ -141,6 +141,35 @@ TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
                                      rowBytes:rowBytes];
 }
 
+- (BOOL)copyCurrentFramebufferToSurface:(TH08IOSD3D8Surface *)surface
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || ![renderer isOwningContextCurrent] ||
+        surface == nil || surface.isLocked ||
+        surface.format == TH08IOSD3D8PixelFormatD16 ||
+        surface.width == 0u || surface.height == 0u ||
+        surface.width > static_cast<uint32_t>(std::numeric_limits<GLsizei>::max()) ||
+        surface.height > static_cast<uint32_t>(std::numeric_limits<GLsizei>::max()))
+        return NO;
+
+    NSData *pixels = [renderer copyCurrentFramebufferRGBA8PixelsWithWidth:
+        static_cast<GLsizei>(surface.width)
+        height:static_cast<GLsizei>(surface.height)];
+    if (pixels == nil)
+        return NO;
+    const size_t rowBytes = static_cast<size_t>(surface.width) * 4u;
+    if (rowBytes / 4u != static_cast<size_t>(surface.width) ||
+        static_cast<size_t>(surface.height) >
+            std::numeric_limits<size_t>::max() / rowBytes ||
+        pixels.length != rowBytes * static_cast<size_t>(surface.height))
+        return NO;
+
+    // glReadPixels returns the bottom row first; D3D8 surfaces are top-left based.
+    return [surface replaceWithRGBA8Pixels:pixels.bytes
+                                  rowBytes:rowBytes
+                                 bottomUp:YES];
+}
+
 - (BOOL)deleteTexture:(GLuint)texture
 {
     if (texture == 0u)

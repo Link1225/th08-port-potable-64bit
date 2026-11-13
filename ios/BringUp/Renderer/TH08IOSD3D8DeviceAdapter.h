@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
                                  height:(GLsizei)height
                                rowBytes:(size_t)rowBytes;
 - (GLuint)createTextureFromSurface:(TH08IOSD3D8Surface *)surface;
+- (BOOL)copyCurrentFramebufferToSurface:(TH08IOSD3D8Surface *)surface;
 - (BOOL)deleteTexture:(GLuint)texture;
 // Mirrors the single active D3D8 texture stage. Zero unbinds the texture.
 - (BOOL)setTexture:(GLuint)texture;
