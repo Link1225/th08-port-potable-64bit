@@ -886,6 +886,57 @@
 }
 
 
+- (void)testD3D8FVFBatchFlowsThroughTheES2DrawAdapter
+{
+    struct D3D8Vertex {
+        float x;
+        float y;
+        float z;
+        uint32_t diffuse;
+    };
+    const D3D8Vertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0xFFFF0000u},
+        { 1.0f, -1.0f, 0.0f, 0xFFFF0000u},
+        { 0.0f,  1.0f, 0.0f, 0xFFFF0000u}
+    };
+
+    TH08IOSD3D8::Matrix4 identity = {};
+    for (size_t index = 0; index < 4; ++index)
+        identity.m[index][index] = 1.0f;
+    const TH08IOSD3D8::Viewport viewport = {0.0f, 0.0f, 8.0f, 8.0f, 0.0f, 1.0f};
+
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSD3D8DeviceAdapter *adapter =
+        [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    XCTAssertTrue([adapter drawFVFVertices:vertices
+                                       fvf:TH08IOSD3D8::FVF_XYZ | TH08IOSD3D8::FVF_DIFFUSE
+                                     stride:sizeof(D3D8Vertex)
+                                      count:3
+                                      world:identity
+                                       view:identity
+                                 projection:identity
+                          textureTransform:identity
+                                   viewport:viewport
+                                  primitive:TH08IOSRendererPrimitiveTriangles]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertGreaterThan(bytes[center], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:0]);
+    [self.renderer deleteTexture:target];
+}
+
 - (void)testD3D8ViewportCoordinatesConvertBackToES2ClipSpace
 {
     using namespace TH08IOSD3D8;
