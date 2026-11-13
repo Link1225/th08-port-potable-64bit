@@ -3,6 +3,7 @@
 #import <OpenGLES/ES2/gl.h>
 
 #import "../Renderer/TH08IOSGLRenderer.h"
+#import "../Renderer/TH08IOSD3D8VertexLayout.h"
 
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
@@ -597,5 +598,91 @@
     }
 
     [self.renderer deleteTexture:target];
+}
+
+- (void)testD3D8FVFLayoutAndDecodeForXYZDiffuseAndUV
+{
+    using namespace TH08IOSD3D8;
+    const uint32_t fvf = FVF_XYZ | FVF_DIFFUSE | (1u << FVF_TEXCOUNT_SHIFT);
+    VertexLayout layout = {};
+    XCTAssertEqual(static_cast<int>(BuildVertexLayout(fvf, &layout)),
+                   static_cast<int>(LayoutError::None));
+    XCTAssertEqual(layout.positionOffset, (size_t)0);
+    XCTAssertEqual(layout.diffuseOffset, (size_t)12);
+    XCTAssertEqual(layout.textureCoordinateOffset, (size_t)16);
+    XCTAssertEqual(layout.textureCoordinate0Components, (uint8_t)2);
+    XCTAssertEqual(layout.requiredStride, (size_t)24);
+
+    uint8_t raw[24] = {};
+    const float position[3] = {12.5f, -7.0f, 0.25f};
+    const uint32_t diffuse = 0x80402010u;
+    const float uv[2] = {0.25f, 0.75f};
+    memcpy(raw, position, sizeof(position));
+    memcpy(raw + 12, &diffuse, sizeof(diffuse));
+    memcpy(raw + 16, uv, sizeof(uv));
+
+    DecodedVertex decoded = {};
+    XCTAssertEqual(static_cast<int>(DecodeVertex(layout, raw, sizeof(raw), &decoded)),
+                   static_cast<int>(LayoutError::None));
+    XCTAssertEqualWithAccuracy(decoded.x, 12.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(decoded.y, -7.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(decoded.z, 0.25f, 0.0001f);
+    XCTAssertEqual(decoded.rhw, 1.0f);
+    XCTAssertEqual(decoded.red, (uint8_t)0x40);
+    XCTAssertEqual(decoded.green, (uint8_t)0x20);
+    XCTAssertEqual(decoded.blue, (uint8_t)0x10);
+    XCTAssertEqual(decoded.alpha, (uint8_t)0x80);
+    XCTAssertEqualWithAccuracy(decoded.u, 0.25f, 0.0001f);
+    XCTAssertEqualWithAccuracy(decoded.v, 0.75f, 0.0001f);
+}
+
+- (void)testD3D8FVFLayoutSkipsOptionalFieldsAndAdditionalTextureSets
+{
+    using namespace TH08IOSD3D8;
+    const uint32_t fvf = FVF_XYZRHW | FVF_NORMAL | FVF_PSIZE |
+        FVF_DIFFUSE | FVF_SPECULAR | (2u << FVF_TEXCOUNT_SHIFT) |
+        FVF_TEXCOORDSIZE1(0) | FVF_TEXCOORDSIZE3(1);
+    VertexLayout layout = {};
+    XCTAssertEqual(static_cast<int>(BuildVertexLayout(fvf, &layout)),
+                   static_cast<int>(LayoutError::None));
+    XCTAssertTrue(layout.transformed);
+    XCTAssertEqual(layout.positionComponents, (uint8_t)4);
+    XCTAssertEqual(layout.normalOffset, (size_t)16);
+    XCTAssertEqual(layout.pointSizeOffset, (size_t)28);
+    XCTAssertEqual(layout.diffuseOffset, (size_t)32);
+    XCTAssertEqual(layout.specularOffset, (size_t)36);
+    XCTAssertEqual(layout.textureCoordinateOffset, (size_t)40);
+    XCTAssertEqual(layout.textureCoordinate0Components, (uint8_t)1);
+    XCTAssertEqual(layout.requiredStride, (size_t)56);
+
+    uint8_t raw[56] = {};
+    const float position[4] = {640.0f, 480.0f, 0.5f, 2.0f};
+    const uint32_t diffuse = 0xFFFFFFFFu;
+    const float uv0 = 0.375f;
+    memcpy(raw, position, sizeof(position));
+    memcpy(raw + 32, &diffuse, sizeof(diffuse));
+    memcpy(raw + 40, &uv0, sizeof(uv0));
+    DecodedVertex decoded = {};
+    XCTAssertEqual(static_cast<int>(DecodeVertex(layout, raw, sizeof(raw), &decoded)),
+                   static_cast<int>(LayoutError::None));
+    XCTAssertTrue(decoded.rhw == 2.0f);
+    XCTAssertEqualWithAccuracy(decoded.u, 0.375f, 0.0001f);
+    XCTAssertEqual(decoded.v, 0.0f);
+}
+
+- (void)testD3D8FVFRejectsUnsupportedPositionAndShortStride
+{
+    using namespace TH08IOSD3D8;
+    VertexLayout layout = {};
+    XCTAssertEqual(static_cast<int>(BuildVertexLayout(0x006u, &layout)),
+                   static_cast<int>(LayoutError::UnsupportedPosition));
+    XCTAssertEqual(static_cast<int>(BuildVertexLayout(FVF_XYZ | FVF_DIFFUSE, &layout)),
+                   static_cast<int>(LayoutError::None));
+    DecodedVertex decoded = {};
+    uint8_t raw[15] = {};
+    XCTAssertEqual(static_cast<int>(DecodeVertex(layout, raw, sizeof(raw), &decoded)),
+                   static_cast<int>(LayoutError::StrideTooSmall));
+    XCTAssertEqual(static_cast<int>(BuildVertexLayout(FVF_XYZ, NULL)),
+                   static_cast<int>(LayoutError::NullOutput));
 }
 @end
