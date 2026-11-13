@@ -1518,6 +1518,52 @@
     XCTAssertTrue([surface unlockRect]);
 }
 
+- (void)testD3D8CopyRectsCopiesOnlyRequestedRegion
+{
+    TH08IOSD3D8Surface *source = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:2 height:2 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    TH08IOSD3D8Surface *destination = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:3 height:3 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    XCTAssertNotNil(source);
+    XCTAssertNotNil(destination);
+
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([source lockRect:nullptr flags:0u lockedRect:&locked]);
+    const uint8_t sourcePixels[16] = {
+        255u, 0u, 0u, 255u, 0u, 255u, 0u, 255u,
+        0u, 0u, 255u, 255u, 255u, 255u, 0u, 255u
+    };
+    memcpy(locked.bits, sourcePixels, sizeof(sourcePixels));
+    XCTAssertTrue([source unlockRect]);
+
+    XCTAssertTrue([destination lockRect:nullptr flags:0u lockedRect:&locked]);
+    memset(locked.bits, 0, 3u * locked.pitch);
+    XCTAssertTrue([destination unlockRect]);
+
+    TH08IOSD3D8DeviceAdapter *adapter =
+        [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    const TH08IOSD3D8SurfaceRect rect = {1, 0, 2, 2};
+    XCTAssertTrue([adapter copySurface:source sourceRect:rect toSurface:destination
+                          destinationX:2 destinationY:1]);
+
+    NSData *pixels = [destination copyRGBA8Pixels];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = static_cast<const uint8_t *>(pixels.bytes);
+    const size_t copiedTop = (1u * 3u + 2u) * 4u;
+    const size_t copiedBottom = (2u * 3u + 2u) * 4u;
+    XCTAssertEqual(bytes[copiedTop], 0u);
+    XCTAssertEqual(bytes[copiedTop + 1u], 255u);
+    XCTAssertEqual(bytes[copiedTop + 2u], 0u);
+    XCTAssertEqual(bytes[copiedBottom], 255u);
+    XCTAssertEqual(bytes[copiedBottom + 1u], 255u);
+    XCTAssertEqual(bytes[copiedBottom + 2u], 0u);
+    XCTAssertEqual(bytes[0], 0u);
+    XCTAssertEqual(bytes[1], 0u);
+    XCTAssertFalse([adapter copySurface:source sourceRect:rect toSurface:destination
+                           destinationX:3 destinationY:1]);
+}
+
 - (void)testD3D8SurfaceDescriptionAndSubrectangleLockPitch
 {
     TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
