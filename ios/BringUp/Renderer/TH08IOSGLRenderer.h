@@ -10,6 +10,7 @@ typedef struct TH08IOSRendererVertex {
     GLfloat x;
     GLfloat y;
     GLfloat z;
+    GLfloat positionW;
     GLfloat u;
     GLfloat v;
     GLubyte red;
