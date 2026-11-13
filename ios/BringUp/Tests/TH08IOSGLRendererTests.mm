@@ -18,24 +18,6 @@
 
 
 
-- (void)testD3D8DeviceAdapterOwnsTextureResources
-{
-    TH08IOSD3D8DeviceAdapter *adapter = [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
-    XCTAssertNotNil(adapter);
-    const uint8_t pixel[4] = {255u, 255u, 255u, 255u};
-    const GLuint texture = [adapter createTextureWithRGBA8Pixels:pixel width:1 height:1 rowBytes:4];
-    XCTAssertNotEqual(texture, 0u);
-    XCTAssertFalse([adapter deleteTexture:0u]);
-    XCTAssertFalse([adapter deleteTexture:texture + 1u]);
-    EAGLContext *otherContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-    XCTAssertNotNil(otherContext);
-    XCTAssertTrue([EAGLContext setCurrentContext:otherContext]);
-    XCTAssertFalse([adapter deleteTexture:texture]);
-    XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
-    XCTAssertTrue([adapter deleteTexture:texture]);
-    XCTAssertFalse([adapter deleteTexture:texture]);
-}
-
 
 @end
 
@@ -1146,6 +1128,25 @@
     XCTAssertTrue([adapter drawBoundVertices:vertices count:3
                                     primitive:TH08IOSRendererPrimitiveTriangles]);
     XCTAssertFalse([adapter setTexture:texture]);
+}
+
+
+- (void)testD3D8DeviceAdapterOwnsTextureResources
+{
+    TH08IOSD3D8DeviceAdapter *adapter = [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    const uint8_t pixel[4] = {255u, 255u, 255u, 255u};
+    const GLuint texture = [adapter createTextureWithRGBA8Pixels:pixel width:1 height:1 rowBytes:4];
+    XCTAssertNotEqual(texture, 0u);
+    XCTAssertFalse([adapter deleteTexture:0u]);
+    XCTAssertFalse([adapter deleteTexture:texture + 1u]);
+    EAGLContext *otherContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    XCTAssertNotNil(otherContext);
+    XCTAssertTrue([EAGLContext setCurrentContext:otherContext]);
+    XCTAssertFalse([adapter deleteTexture:texture]);
+    XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
+    XCTAssertTrue([adapter deleteTexture:texture]);
+    XCTAssertFalse([adapter deleteTexture:texture]);
 }
 
 
