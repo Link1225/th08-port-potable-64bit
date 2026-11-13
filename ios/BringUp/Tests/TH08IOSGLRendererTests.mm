@@ -4,6 +4,7 @@
 
 #include <limits>
 #include <vector>
+#include <string.h>
 
 #import "../Renderer/TH08IOSGLRenderer.h"
 #import "../Renderer/TH08IOSD3D8DeviceAdapter.h"
@@ -16,139 +17,6 @@
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
 @property(nonatomic, strong) TH08IOSGLRenderer *renderer;
-
-
-
-
-
-- (void)testD3D8SurfaceDescriptionAndSubrectangleLockPitch
-{
-    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:4 height:3 format:TH08IOSD3D8PixelFormatA8R8G8B8];
-    XCTAssertNotNil(surface);
-    TH08IOSD3D8SurfaceDescription description = {};
-    XCTAssertTrue([surface getDescription:&description]);
-    XCTAssertEqual(description.width, 4u);
-    XCTAssertEqual(description.height, 3u);
-    XCTAssertEqual(description.pitch, (size_t)16u);
-    XCTAssertEqual(description.byteSize, (size_t)48u);
-
-    const TH08IOSD3D8Rect rect = {1, 1, 3, 2};
-    TH08IOSD3D8LockedRect locked = {};
-    XCTAssertTrue([surface lockRect:&rect flags:0u lockedRect:&locked]);
-    XCTAssertEqual(locked.pitch, (size_t)16u);
-    XCTAssertNotEqual(locked.bits, nullptr);
-    uint8_t *pixel = static_cast<uint8_t *>(locked.bits);
-    pixel[0] = 30u; pixel[1] = 20u; pixel[2] = 10u; pixel[3] = 40u;
-    XCTAssertTrue(surface.isLocked);
-    XCTAssertFalse([surface unlockRect] == NO);
-    XCTAssertFalse(surface.isLocked);
-    XCTAssertEqual(surface.contentGeneration, 1u);
-
-    NSData *rgba = [surface copyRGBA8Pixels];
-    XCTAssertNotNil(rgba);
-    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
-    const size_t offset = (size_t)(1u * 4u + 1u) * 4u;
-    XCTAssertEqual(bytes[offset], 10u);
-    XCTAssertEqual(bytes[offset + 1u], 20u);
-    XCTAssertEqual(bytes[offset + 2u], 30u);
-    XCTAssertEqual(bytes[offset + 3u], 40u);
-}
-
-- (void)testD3D8SurfaceRejectsInvalidLocksAndTracksReadOnly
-{
-    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:2 height:2 format:TH08IOSD3D8PixelFormatX8R8G8B8];
-    XCTAssertNotNil(surface);
-    TH08IOSD3D8LockedRect locked = {};
-    const TH08IOSD3D8Rect outside = {-1, 0, 1, 1};
-    XCTAssertFalse([surface lockRect:&outside flags:0u lockedRect:&locked]);
-    const TH08IOSD3D8Rect partial = {0, 0, 1, 1};
-    XCTAssertFalse([surface lockRect:&partial flags:TH08IOSD3D8LockDiscard
-                          lockedRect:&locked]);
-    XCTAssertFalse([surface lockRect:nullptr flags:0x80000000u lockedRect:&locked]);
-    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockReadOnly
-                         lockedRect:&locked]);
-    XCTAssertFalse([surface lockRect:nullptr flags:0u lockedRect:&locked]);
-    XCTAssertFalse([surface copyRGBA8Pixels] != nil);
-    XCTAssertTrue([surface unlockRect]);
-    XCTAssertEqual(surface.contentGeneration, 0u);
-    XCTAssertFalse([surface unlockRect]);
-
-    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockDiscard
-                         lockedRect:&locked]);
-    memset(locked.bits, 0x7F, locked.pitch * 2u);
-    XCTAssertTrue([surface unlockRect]);
-    XCTAssertEqual(surface.contentGeneration, 1u);
-}
-
-- (void)testD3D8SurfaceCopiesAndConvertsPixelFormats
-{
-    TH08IOSD3D8Surface *source = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatA8R8G8B8];
-    TH08IOSD3D8Surface *destination = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatA4R4G4B4];
-    XCTAssertNotNil(source);
-    XCTAssertNotNil(destination);
-
-    TH08IOSD3D8LockedRect locked = {};
-    XCTAssertTrue([source lockRect:nullptr flags:0u lockedRect:&locked]);
-    uint8_t *sourcePixel = static_cast<uint8_t *>(locked.bits);
-    sourcePixel[0] = 30u; sourcePixel[1] = 20u;
-    sourcePixel[2] = 10u; sourcePixel[3] = 40u;
-    XCTAssertTrue([source unlockRect]);
-
-    const TH08IOSD3D8Point origin = {0, 0};
-    XCTAssertTrue([destination copyFromSurface:source sourceRect:nullptr
-                               destinationPoint:origin]);
-    NSData *rgba = [destination copyRGBA8Pixels];
-    XCTAssertNotNil(rgba);
-    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
-    XCTAssertEqual(bytes[0], 0u);
-    XCTAssertEqual(bytes[1], 17u);
-    XCTAssertEqual(bytes[2], 17u);
-    XCTAssertEqual(bytes[3], 34u);
-
-    TH08IOSD3D8Surface *depth = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatD16];
-    XCTAssertNotNil(depth);
-    XCTAssertNil([depth copyRGBA8Pixels]);
-    XCTAssertFalse([destination copyFromSurface:depth sourceRect:nullptr
-                                destinationPoint:origin]);
-}
-
-- (void)testD3D8SurfaceCopyHandlesOverlapAndBounds
-{
-    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
-        initWithWidth:3 height:1 format:TH08IOSD3D8PixelFormatA8R8G8B8];
-    XCTAssertNotNil(surface);
-    TH08IOSD3D8LockedRect locked = {};
-    XCTAssertTrue([surface lockRect:nullptr flags:0u lockedRect:&locked]);
-    uint8_t *pixels = static_cast<uint8_t *>(locked.bits);
-    const uint8_t values[12] = {
-        0u, 0u, 10u, 255u,
-        0u, 0u, 20u, 255u,
-        0u, 0u, 30u, 255u
-    };
-    memcpy(pixels, values, sizeof(values));
-    XCTAssertTrue([surface unlockRect]);
-
-    const TH08IOSD3D8Rect firstTwo = {0, 0, 2, 1};
-    const TH08IOSD3D8Point shiftRight = {1, 0};
-    XCTAssertTrue([surface copyFromSurface:surface sourceRect:&firstTwo
-                           destinationPoint:shiftRight]);
-    NSData *rgba = [surface copyRGBA8Pixels];
-    XCTAssertNotNil(rgba);
-    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
-    XCTAssertEqual(bytes[0], 10u);
-    XCTAssertEqual(bytes[4], 10u);
-    XCTAssertEqual(bytes[8], 20u);
-
-    const TH08IOSD3D8Point invalidDestination = {2, 0};
-    XCTAssertFalse([surface copyFromSurface:surface sourceRect:&firstTwo
-                            destinationPoint:invalidDestination]);
-}
-
 
 @end
 
@@ -1551,6 +1419,135 @@
     XCTAssertTrue([EAGLContext setCurrentContext:self.context]);
     XCTAssertTrue([adapter deleteTexture:texture]);
     XCTAssertFalse([adapter deleteTexture:texture]);
+}
+
+
+- (void)testD3D8SurfaceDescriptionAndSubrectangleLockPitch
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:4 height:3 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    XCTAssertNotNil(surface);
+    TH08IOSD3D8SurfaceDescription description = {};
+    XCTAssertTrue([surface getDescription:&description]);
+    XCTAssertEqual(description.width, 4u);
+    XCTAssertEqual(description.height, 3u);
+    XCTAssertEqual(description.pitch, (size_t)16u);
+    XCTAssertEqual(description.byteSize, (size_t)48u);
+
+    const TH08IOSD3D8Rect rect = {1, 1, 3, 2};
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([surface lockRect:&rect flags:0u lockedRect:&locked]);
+    XCTAssertEqual(locked.pitch, (size_t)16u);
+    XCTAssertNotEqual(locked.bits, nullptr);
+    uint8_t *pixel = static_cast<uint8_t *>(locked.bits);
+    pixel[0] = 30u; pixel[1] = 20u; pixel[2] = 10u; pixel[3] = 40u;
+    XCTAssertTrue(surface.isLocked);
+    XCTAssertTrue([surface unlockRect]);
+    XCTAssertFalse(surface.isLocked);
+    XCTAssertEqual(surface.contentGeneration, 1u);
+
+    NSData *rgba = [surface copyRGBA8Pixels];
+    XCTAssertNotNil(rgba);
+    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
+    const size_t offset = (size_t)(1u * 4u + 1u) * 4u;
+    XCTAssertEqual(bytes[offset], 10u);
+    XCTAssertEqual(bytes[offset + 1u], 20u);
+    XCTAssertEqual(bytes[offset + 2u], 30u);
+    XCTAssertEqual(bytes[offset + 3u], 40u);
+}
+
+- (void)testD3D8SurfaceRejectsInvalidLocksAndTracksReadOnly
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:2 height:2 format:TH08IOSD3D8PixelFormatX8R8G8B8];
+    XCTAssertNotNil(surface);
+    TH08IOSD3D8LockedRect locked = {};
+    const TH08IOSD3D8Rect outside = {-1, 0, 1, 1};
+    XCTAssertFalse([surface lockRect:&outside flags:0u lockedRect:&locked]);
+    const TH08IOSD3D8Rect partial = {0, 0, 1, 1};
+    XCTAssertFalse([surface lockRect:&partial flags:TH08IOSD3D8LockDiscard
+                          lockedRect:&locked]);
+    XCTAssertFalse([surface lockRect:nullptr flags:0x80000000u lockedRect:&locked]);
+    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockReadOnly
+                         lockedRect:&locked]);
+    XCTAssertFalse([surface lockRect:nullptr flags:0u lockedRect:&locked]);
+    XCTAssertNil([surface copyRGBA8Pixels]);
+    XCTAssertTrue([surface unlockRect]);
+    XCTAssertEqual(surface.contentGeneration, 0u);
+    XCTAssertFalse([surface unlockRect]);
+
+    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockDiscard
+                         lockedRect:&locked]);
+    memset(locked.bits, 0x7F, locked.pitch * 2u);
+    XCTAssertTrue([surface unlockRect]);
+    XCTAssertEqual(surface.contentGeneration, 1u);
+}
+
+- (void)testD3D8SurfaceCopiesAndConvertsPixelFormats
+{
+    TH08IOSD3D8Surface *source = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    TH08IOSD3D8Surface *destination = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatA4R4G4B4];
+    XCTAssertNotNil(source);
+    XCTAssertNotNil(destination);
+
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([source lockRect:nullptr flags:0u lockedRect:&locked]);
+    uint8_t *sourcePixel = static_cast<uint8_t *>(locked.bits);
+    sourcePixel[0] = 30u; sourcePixel[1] = 20u;
+    sourcePixel[2] = 10u; sourcePixel[3] = 40u;
+    XCTAssertTrue([source unlockRect]);
+
+    const TH08IOSD3D8Point origin = {0, 0};
+    XCTAssertTrue([destination copyFromSurface:source sourceRect:nullptr
+                               destinationPoint:origin]);
+    NSData *rgba = [destination copyRGBA8Pixels];
+    XCTAssertNotNil(rgba);
+    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
+    XCTAssertEqual(bytes[0], 0u);
+    XCTAssertEqual(bytes[1], 17u);
+    XCTAssertEqual(bytes[2], 17u);
+    XCTAssertEqual(bytes[3], 34u);
+
+    TH08IOSD3D8Surface *depth = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatD16];
+    XCTAssertNotNil(depth);
+    XCTAssertNil([depth copyRGBA8Pixels]);
+    XCTAssertFalse([destination copyFromSurface:depth sourceRect:nullptr
+                                destinationPoint:origin]);
+}
+
+- (void)testD3D8SurfaceCopyHandlesOverlapAndBounds
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:3 height:1 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    XCTAssertNotNil(surface);
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([surface lockRect:nullptr flags:0u lockedRect:&locked]);
+    uint8_t *pixels = static_cast<uint8_t *>(locked.bits);
+    const uint8_t values[12] = {
+        0u, 0u, 10u, 255u,
+        0u, 0u, 20u, 255u,
+        0u, 0u, 30u, 255u
+    };
+    memcpy(pixels, values, sizeof(values));
+    XCTAssertTrue([surface unlockRect]);
+
+    const TH08IOSD3D8Rect firstTwo = {0, 0, 2, 1};
+    const TH08IOSD3D8Point shiftRight = {1, 0};
+    XCTAssertTrue([surface copyFromSurface:surface sourceRect:&firstTwo
+                           destinationPoint:shiftRight]);
+    NSData *rgba = [surface copyRGBA8Pixels];
+    XCTAssertNotNil(rgba);
+    const uint8_t *bytes = static_cast<const uint8_t *>(rgba.bytes);
+    XCTAssertEqual(bytes[0], 10u);
+    XCTAssertEqual(bytes[4], 10u);
+    XCTAssertEqual(bytes[8], 20u);
+
+    const TH08IOSD3D8Point invalidDestination = {2, 0};
+    XCTAssertFalse([surface copyFromSurface:surface sourceRect:&firstTwo
+                            destinationPoint:invalidDestination]);
 }
 
 
