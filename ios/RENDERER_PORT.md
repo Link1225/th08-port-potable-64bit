@@ -53,6 +53,9 @@ made with a different current context. It provides:
 - a fail-closed mapping table for the D3DTOP subset, texture arguments without
   complement/alpha-replicate modifiers, all eight D3D comparison functions,
   and the eleven standard D3D blend factors supported by ES2.
+- D3D row-vector world/view/projection transform helpers, including viewport
+  mapping, view-space fog-coordinate capture, pre-transformed XYZRHW reciprocal-W
+  handling, and the Linux adapter's texture-matrix coordinate convention.
 
 The XCTest suite now exercises offscreen readback and switching, texture
 sampling, transforms, alpha comparisons, blend/depth state, viewport restore,
@@ -60,8 +63,9 @@ scissor and clear behavior, color-write masks, blend equations, texture-factor
 combining, linear fog, and cleanup of all four enabled vertex attributes after
 a draw. It also checks FVF offsets/decoding, transformed vertex layout,
 additional texture-coordinate set skipping, unsupported FVF rejection, and
-the supported D3D state mappings. These are unit tests, not a parity test
-against the Linux adapter's deterministic output.
+the supported D3D state mappings, world/view/projection and viewport
+math, XYZRHW reciprocal-W handling, and texture-matrix coordinates. These are
+unit tests, not a parity test against the Linux adapter's deterministic output.
 
 This foundation is intentionally not represented as a Direct3D 8 replacement.
 No game-engine call site uses it. CI compile/test success establishes that the
