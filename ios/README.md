@@ -12,8 +12,23 @@ size, and verifies each entry name and payload offset before replacing the
 stored pair. Individual asset payloads are still decompressed by the game
 engine at load time. An iOS-only compile-time path now bypasses DirectInput
 and reads the UIKit keyboard buffer from `Controller::GetInput`; no iOS game
-target currently compiles or runs that path. The current Win32/Direct3D 8 entry
-point and SDL2/desktop-OpenGL runtime still need an iOS platform implementation.
+target currently compiles or runs that path.
+
+## Renderer foundation
+
+`BringUp/Renderer/TH08IOSGLRenderer` is the first native OpenGL ES 2 renderer
+module. It compiles and links explicit vertex/fragment shaders, accepts
+interleaved position/UV/RGBA vertices, draws primitive arrays, uploads RGBA8
+textures, and applies explicit blend/depth/viewport state. It is compiled into
+the bring-up target so both Simulator and device SDK builds validate the iOS
+graphics API integration.
+
+This is only a renderer foundation, not a Direct3D 8 replacement. It does not
+yet implement the original engine's matrix stack, transformed/lit vertices,
+alpha-test/fog semantics, render targets, readback, texture formats, or
+resource lifecycle. The game engine does not call it yet. The original
+Win32/Direct3D 8 entry point and SDL2/desktop-OpenGL runtime still need an iOS
+platform implementation.
 
 ## Bring-up app
 
@@ -23,7 +38,7 @@ The XcodeGen project in `BringUp/project.yml` builds a SwiftUI app. It imports:
 - `thbgm.dat`
 
 Both files must be selected together. They are staged under
-`Application Support/TH08Data` and replace the previous pair only after both
+Application Support/TH08Data and replace the previous pair only after both
 copies succeed. Game archives are never committed to this repository.
 
 The UIKit keyboard responder captures external keyboard presses/releases and
@@ -48,18 +63,18 @@ xcodebuild -project TH08BringUp.xcodeproj \
 
 The GitHub Actions workflow `.github/workflows/ios-bringup.yml` performs an
 unsigned Simulator build and an unsigned generic iOS device build on a macOS
-runner. Both builds and the host-side keyboard bridge test passed for commit
-`b545ef2`. An unsigned build is not an installable, signed IPA.
+runner. These are compile checks only; an unsigned build is not an installable,
+signed IPA.
 
 ## Remaining engine integration
 
 1. Introduce an iOS application entry point and lifecycle-aware frame loop.
 2. Replace the Win32 window/message-pump boundary without changing reconstructed
    game logic or its exactness evidence.
-3. Port Direct3D 8 device/resource/state behavior to a supported iOS graphics
-   API and validate it against existing renderer captures.
-4. Connect the keyboard-state ABI to the game's input polling and clear held
-   keys on app deactivation.
+3. Extend the ES2 renderer to match Direct3D 8 state/resource behavior and
+   validate it against deterministic reference captures.
+4. Connect the renderer and keyboard-state ABI to the game's actual input and
+   frame loop.
 5. Port audio, timing, save/config paths, focus handling, and full archive
    loading, including file-table decompression and entry validation.
 6. Run the original game with user-imported archives on a physical iPhone and

@@ -17,6 +17,9 @@ targets:
     platform: iOS
     sources:
       - path: TH08BringUp
+      - path: Renderer
+    dependencies:
+      - sdk: OpenGLES.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.th08.bringup
