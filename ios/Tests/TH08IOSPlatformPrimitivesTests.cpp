@@ -2,6 +2,11 @@
 
 #include <assert.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <string.h>
 
 struct WorkerState
@@ -58,5 +63,37 @@ int main()
     for (int i = 0; i < 16; ++i)
         assert(memory[i] == 0);
     assert(GlobalFree(memory) == NULL);
+
+    char directory[] = "/tmp/th08-ios-find-XXXXXX";
+    assert(mkdtemp(directory) != NULL);
+    char firstPath[512];
+    char secondPath[512];
+    char ignoredPath[512];
+    snprintf(firstPath, sizeof(firstPath), "%s/score_1.260101.bak", directory);
+    snprintf(secondPath, sizeof(secondPath), "%s/score_1.260102.bak", directory);
+    snprintf(ignoredPath, sizeof(ignoredPath), "%s/other.dat", directory);
+    FILE *first = fopen(firstPath, "wb");
+    FILE *second = fopen(secondPath, "wb");
+    FILE *ignored = fopen(ignoredPath, "wb");
+    assert(first != NULL && second != NULL && ignored != NULL);
+    fclose(first);
+    fclose(second);
+    fclose(ignored);
+
+    char pattern[512];
+    snprintf(pattern, sizeof(pattern), "%s/score_1.??????.bak", directory);
+    WIN32_FIND_DATAA findData;
+    HANDLE findHandle = FindFirstFileA(pattern, &findData);
+    assert(findHandle != INVALID_HANDLE_VALUE);
+    int found = 1;
+    while (FindNextFileA(findHandle, &findData))
+        ++found;
+    assert(found == 2);
+    assert(FindClose(findHandle));
+    assert(DeleteFileA(firstPath));
+    assert(DeleteFileA(secondPath));
+    assert(DeleteFileA(ignoredPath));
+    assert(rmdir(directory) == 0);
+    assert(FindClose(INVALID_HANDLE_VALUE) == FALSE);
     return 0;
 }

@@ -1,6 +1,11 @@
 #include <windows.h>
 
 #include <errno.h>
+#include <glob.h>
+#include <new>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -87,4 +92,71 @@ HGLOBAL GlobalFree(HGLOBAL memory)
 {
     free(memory);
     return NULL;
+}
+
+namespace
+{
+struct IOSFindHandle
+{
+    glob_t matches;
+    size_t index;
+};
+
+BOOL CopyFindData(const IOSFindHandle *handle, WIN32_FIND_DATAA *data)
+{
+    if (handle == NULL || data == NULL || handle->index >= handle->matches.gl_pathc)
+        return FALSE;
+
+    memset(data, 0, sizeof(*data));
+    const char *path = handle->matches.gl_pathv[handle->index];
+    const char *name = strrchr(path, '/');
+    name = name != NULL ? name + 1 : path;
+    snprintf(data->cFileName, sizeof(data->cFileName), "%s", name);
+    return TRUE;
+}
+} // namespace
+
+BOOL DeleteFileA(LPCSTR path)
+{
+    return path != NULL && unlink(path) == 0 ? TRUE : FALSE;
+}
+
+HANDLE FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA *data)
+{
+    if (pattern == NULL || data == NULL)
+        return INVALID_HANDLE_VALUE;
+
+    IOSFindHandle *handle = new (std::nothrow) IOSFindHandle();
+    if (handle == NULL)
+        return INVALID_HANDLE_VALUE;
+    memset(&handle->matches, 0, sizeof(handle->matches));
+    handle->index = 0;
+
+    const int result = glob(pattern, 0, NULL, &handle->matches);
+    if (result != 0 || handle->matches.gl_pathc == 0 || !CopyFindData(handle, data))
+    {
+        globfree(&handle->matches);
+        delete handle;
+        return INVALID_HANDLE_VALUE;
+    }
+    return static_cast<HANDLE>(handle);
+}
+
+BOOL FindNextFileA(HANDLE rawHandle, WIN32_FIND_DATAA *data)
+{
+    if (rawHandle == INVALID_HANDLE_VALUE || rawHandle == NULL || data == NULL)
+        return FALSE;
+    IOSFindHandle *handle = static_cast<IOSFindHandle *>(rawHandle);
+    ++handle->index;
+    return CopyFindData(handle, data);
+}
+
+BOOL FindClose(HANDLE rawHandle)
+{
+    if (rawHandle == INVALID_HANDLE_VALUE || rawHandle == NULL)
+        return FALSE;
+    IOSFindHandle *handle = static_cast<IOSFindHandle *>(rawHandle);
+    globfree(&handle->matches);
+    delete handle;
+    return TRUE;
 }
