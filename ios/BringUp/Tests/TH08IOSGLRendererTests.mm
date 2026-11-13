@@ -5,6 +5,7 @@
 #import "../Renderer/TH08IOSGLRenderer.h"
 #import "../Renderer/TH08IOSD3D8VertexLayout.h"
 #import "../Renderer/TH08IOSD3D8StateMapping.h"
+#import "../Renderer/TH08IOSD3D8Transform.h"
 
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
@@ -744,5 +745,59 @@
     GLenum unsupported = 0;
     XCTAssertFalse(MapCompareFunction(0u, &unsupported));
     XCTAssertFalse(MapBlendFactor(12u, &unsupported));
+}
+
+- (void)testD3D8XYZTransformMatchesLinuxAdapterViewportAndFogMath
+{
+    using namespace TH08IOSD3D8;
+    Matrix4 identity = {};
+    for (NSUInteger index = 0; index < 4; ++index)
+        identity.m[index][index] = 1.0f;
+    Viewport viewport = {10.0f, 20.0f, 640.0f, 480.0f, 0.0f, 1.0f};
+    const float position[3] = {0.0f, 0.0f, 0.5f};
+    HomogeneousPosition result = {};
+    XCTAssertTrue(TransformXYZ(position, identity, identity, identity, viewport, &result));
+    XCTAssertEqualWithAccuracy(result.x, 330.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.y, 260.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.z, 0.5f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.w, 1.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.fogCoordinate, 0.5f, 0.0001f);
+    XCTAssertFalse(TransformXYZ(position, identity, identity, identity,
+                                 Viewport{0, 0, 0, 480, 0, 1}, &result));
+}
+
+- (void)testD3D8XYZRHWTransformHandlesReciprocalWAndZeroW
+{
+    using namespace TH08IOSD3D8;
+    const float position[4] = {99.5f, 49.5f, 0.25f, 2.0f};
+    HomogeneousPosition result = {};
+    XCTAssertTrue(TransformXYZRHW(position, &result));
+    XCTAssertEqualWithAccuracy(result.x, 50.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.y, 25.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.z, 0.125f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.w, 0.5f, 0.0001f);
+    XCTAssertEqual(result.fogCoordinate, 0.0f);
+
+    const float zeroW[4] = {2.5f, 4.5f, 0.75f, 0.0f};
+    XCTAssertTrue(TransformXYZRHW(zeroW, &result));
+    XCTAssertEqualWithAccuracy(result.x, 3.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.y, 5.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(result.w, 1.0f, 0.0001f);
+}
+
+- (void)testD3D8TextureTransformUsesD3DMatrixConvention
+{
+    using namespace TH08IOSD3D8;
+    Matrix4 texture = {};
+    texture.m[0][0] = 2.0f;
+    texture.m[1][0] = 3.0f;
+    texture.m[2][0] = 5.0f;
+    texture.m[0][1] = 7.0f;
+    texture.m[1][1] = 11.0f;
+    texture.m[2][1] = 13.0f;
+    float u = 0.0f, v = 0.0f;
+    TransformTextureCoordinate(0.25f, 0.5f, texture, &u, &v);
+    XCTAssertEqualWithAccuracy(u, 7.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(v, 20.25f, 0.0001f);
 }
 @end
