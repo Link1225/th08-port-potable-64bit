@@ -10,6 +10,7 @@
     uint32_t _renderStates[256];
     uint32_t _textureStates[32];
     NSMutableSet<NSNumber *> *_ownedTextures;
+    GLuint _boundTexture;
 }
 @end
 
@@ -79,7 +80,24 @@
         return NO;
     [renderer deleteTexture:texture];
     [_ownedTextures removeObject:key];
+    if (_boundTexture == texture) _boundTexture = 0u;
     return YES;
+}
+
+- (BOOL)setTexture:(GLuint)texture
+{
+    if (texture != 0u &&
+        ![_ownedTextures containsObject:[NSNumber numberWithUnsignedInt:texture]])
+        return NO;
+    _boundTexture = texture;
+    return YES;
+}
+
+- (BOOL)drawBoundVertices:(const TH08IOSRendererVertex *)vertices
+                    count:(GLsizei)count
+                primitive:(TH08IOSRendererPrimitive)primitive
+{
+    return [self drawVertices:vertices count:count primitive:primitive texture:_boundTexture];
 }
 
 - (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices

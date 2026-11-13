@@ -9,6 +9,11 @@ NS_ASSUME_NONNULL_BEGIN
                                  height:(GLsizei)height
                                rowBytes:(size_t)rowBytes;
 - (BOOL)deleteTexture:(GLuint)texture;
+// Mirrors the single active D3D8 texture stage. Zero unbinds the texture.
+- (BOOL)setTexture:(GLuint)texture;
+- (BOOL)drawBoundVertices:(const TH08IOSRendererVertex *)vertices
+                    count:(GLsizei)count
+                primitive:(TH08IOSRendererPrimitive)primitive;
 - (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
                count:(GLsizei)count
            primitive:(TH08IOSRendererPrimitive)primitive

@@ -1100,10 +1100,10 @@
         { 1, -1, 0, 1, 0, 255, 255, 255, 255},
         { 0,  1, 0, 0.5f, 1, 255, 255, 255, 255}
     };
-    XCTAssertFalse([adapter drawVertices:vertices count:3
-                                primitive:TH08IOSRendererPrimitiveTriangles texture:texture + 1u]);
-    XCTAssertTrue([adapter drawVertices:vertices count:3
-                               primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+    XCTAssertFalse([adapter setTexture:texture + 1u]);
+    XCTAssertTrue([adapter setTexture:texture]);
+    XCTAssertTrue([adapter drawBoundVertices:vertices count:3
+                                    primitive:TH08IOSRendererPrimitiveTriangles]);
     NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
     XCTAssertNotNil(pixels);
     const uint8_t *bytes = (const uint8_t *)pixels.bytes;
@@ -1114,6 +1114,10 @@
 
     [self.renderer deleteTexture:target];
     XCTAssertTrue([adapter deleteTexture:texture]);
+    // Releasing the bound texture automatically returns the stage to untextured.
+    XCTAssertTrue([adapter drawBoundVertices:vertices count:3
+                                    primitive:TH08IOSRendererPrimitiveTriangles]);
+    XCTAssertFalse([adapter setTexture:texture]);
 }
 
 
