@@ -14,65 +14,7 @@
 @property(nonatomic, strong) EAGLContext *context;
 @property(nonatomic, strong) TH08IOSGLRenderer *renderer;
 
-- (void)testTextureArgumentComplementAndAlphaReplicateAffectRenderedPixels
-{
-    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
-    XCTAssertNotEqual(target, 0u);
-    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
-    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
 
-    const uint8_t texel[4] = {51, 102, 153, 64};
-    const GLuint texture = [self.renderer createTextureWithRGBA8Pixels:texel
-                                                                 width:1
-                                                                height:1
-                                                              rowBytes:4];
-    XCTAssertNotEqual(texture, 0u);
-    XCTAssertTrue([self.renderer setTextureStageColorOperation:
-                   TH08IOSRendererTextureOperationSelectArg1
-                   colorArgument1:TH08IOSRendererTextureArgumentTexture
-                   colorArgument2:TH08IOSRendererTextureArgumentDiffuse
-                   alphaOperation:TH08IOSRendererTextureOperationSelectArg1
-                   alphaArgument1:TH08IOSRendererTextureArgumentTexture
-                   alphaArgument2:TH08IOSRendererTextureArgumentDiffuse]);
-
-    TH08IOSRendererVertex vertices[3] = {
-        {-1.0f, -1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255},
-        { 1.0f, -1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255},
-        { 0.0f,  1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255}
-    };
-
-    [self.renderer clearRed:0 green:0 blue:0 alpha:1 depth:1];
-    XCTAssertTrue([self.renderer setTextureStageArgumentModifiersColor1:1 color2:0 alpha1:0 alpha2:0]);
-    XCTAssertTrue([self.renderer drawVertices:vertices count:3
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
-    NSData *complementPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(complementPixels);
-    const uint8_t *complement = (const uint8_t *)complementPixels.bytes;
-    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
-    XCTAssertGreaterThan(complement[center], (uint8_t)185);
-    XCTAssertGreaterThan(complement[center + 1], (uint8_t)135);
-    XCTAssertGreaterThan(complement[center + 2], (uint8_t)85);
-    XCTAssertGreaterThan(complement[center + 3], (uint8_t)45);
-    XCTAssertLessThan(complement[center + 3], (uint8_t)85);
-
-    [self.renderer clearRed:0 green:0 blue:0 alpha:1 depth:1];
-    XCTAssertTrue([self.renderer setTextureStageArgumentModifiersColor1:2 color2:0 alpha1:0 alpha2:0]);
-    XCTAssertTrue([self.renderer drawVertices:vertices count:3
-                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
-    NSData *replicatedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
-    XCTAssertNotNil(replicatedPixels);
-    const uint8_t *replicated = (const uint8_t *)replicatedPixels.bytes;
-    XCTAssertGreaterThan(replicated[center], (uint8_t)45);
-    XCTAssertLessThan(replicated[center], (uint8_t)85);
-    XCTAssertEqualWithAccuracy(replicated[center], replicated[center + 1], 2);
-    XCTAssertEqualWithAccuracy(replicated[center], replicated[center + 2], 2);
-    XCTAssertGreaterThan(replicated[center + 3], (uint8_t)45);
-    XCTAssertLessThan(replicated[center + 3], (uint8_t)85);
-
-    XCTAssertFalse([self.renderer setTextureStageArgumentModifiersColor1:4 color2:0 alpha1:0 alpha2:0]);
-    [self.renderer deleteTexture:texture];
-    [self.renderer deleteTexture:target];
-}
 
 @end
 
@@ -992,4 +934,64 @@
                    LayoutError::StrideTooSmall);
     XCTAssertEqualWithAccuracy(output.x, 123.0f, 0.0001f);
 }
+- (void)testTextureArgumentComplementAndAlphaReplicateAffectRenderedPixels
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+
+    const uint8_t texel[4] = {51, 102, 153, 64};
+    const GLuint texture = [self.renderer createTextureWithRGBA8Pixels:texel
+                                                                 width:1
+                                                                height:1
+                                                              rowBytes:4];
+    XCTAssertNotEqual(texture, 0u);
+    XCTAssertTrue([self.renderer setTextureStageColorOperation:
+                   TH08IOSRendererTextureOperationSelectArg1
+                   colorArgument1:TH08IOSRendererTextureArgumentTexture
+                   colorArgument2:TH08IOSRendererTextureArgumentDiffuse
+                   alphaOperation:TH08IOSRendererTextureOperationSelectArg1
+                   alphaArgument1:TH08IOSRendererTextureArgumentTexture
+                   alphaArgument2:TH08IOSRendererTextureArgumentDiffuse]);
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255},
+        { 1.0f, -1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 0.5f, 255, 255, 255, 255}
+    };
+
+    [self.renderer clearRed:0 green:0 blue:0 alpha:1 depth:1];
+    XCTAssertTrue([self.renderer setTextureStageArgumentModifiersColor1:1 color2:0 alpha1:0 alpha2:0]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+    NSData *complementPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(complementPixels);
+    const uint8_t *complement = (const uint8_t *)complementPixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertGreaterThan(complement[center], (uint8_t)185);
+    XCTAssertGreaterThan(complement[center + 1], (uint8_t)135);
+    XCTAssertGreaterThan(complement[center + 2], (uint8_t)85);
+    XCTAssertGreaterThan(complement[center + 3], (uint8_t)45);
+    XCTAssertLessThan(complement[center + 3], (uint8_t)85);
+
+    [self.renderer clearRed:0 green:0 blue:0 alpha:1 depth:1];
+    XCTAssertTrue([self.renderer setTextureStageArgumentModifiersColor1:2 color2:0 alpha1:0 alpha2:0]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+    NSData *replicatedPixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(replicatedPixels);
+    const uint8_t *replicated = (const uint8_t *)replicatedPixels.bytes;
+    XCTAssertGreaterThan(replicated[center], (uint8_t)45);
+    XCTAssertLessThan(replicated[center], (uint8_t)85);
+    XCTAssertEqualWithAccuracy(replicated[center], replicated[center + 1], 2);
+    XCTAssertEqualWithAccuracy(replicated[center], replicated[center + 2], 2);
+    XCTAssertGreaterThan(replicated[center + 3], (uint8_t)45);
+    XCTAssertLessThan(replicated[center + 3], (uint8_t)85);
+
+    XCTAssertFalse([self.renderer setTextureStageArgumentModifiersColor1:4 color2:0 alpha1:0 alpha2:0]);
+    [self.renderer deleteTexture:texture];
+    [self.renderer deleteTexture:target];
+}
+
 @end
