@@ -75,7 +75,7 @@ static inline bool ViewportToClipPosition(const HomogeneousPosition &screenPosit
 {
     if (output == NULL || !(viewport.width > 0.0f) ||
         !(viewport.height > 0.0f) || !(viewport.maxZ > viewport.minZ) ||
-        !isfinite(screenPosition.x) || !isfinite(screenPosition.y) ||
+        screenPosition.w == 0.0f || !isfinite(screenPosition.x) || !isfinite(screenPosition.y) ||
         !isfinite(screenPosition.z) || !isfinite(screenPosition.w) ||
         !isfinite(viewport.x) || !isfinite(viewport.y) ||
         !isfinite(viewport.width) || !isfinite(viewport.height) ||
