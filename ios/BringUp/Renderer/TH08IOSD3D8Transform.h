@@ -47,23 +47,49 @@ static inline bool TransformXYZ(const float position[3],
                                 HomogeneousPosition *output)
 {
     if (position == NULL || output == NULL ||
-        !(viewport.width > 0.0f) || !(viewport.height > 0.0f))
+        !isfinite(position[0]) || !isfinite(position[1]) || !isfinite(position[2]) ||
+        !isfinite(viewport.x) || !isfinite(viewport.y) ||
+        !isfinite(viewport.width) || !isfinite(viewport.height) ||
+        !isfinite(viewport.minZ) || !isfinite(viewport.maxZ) ||
+        !(viewport.width > 0.0f) || !(viewport.height > 0.0f) ||
+        !(viewport.maxZ > viewport.minZ))
         return false;
+
+    const Matrix4 *matrices[3] = {&world, &view, &projection};
+    for (size_t matrixIndex = 0; matrixIndex < 3; ++matrixIndex)
+        for (size_t row = 0; row < 4; ++row)
+            for (size_t column = 0; column < 4; ++column)
+                if (!isfinite(matrices[matrixIndex]->m[row][column]))
+                    return false;
 
     float vector[4] = {position[0], position[1], position[2], 1.0f};
     float next[4];
     MultiplyRowVector(vector, world, next);
+    for (size_t index = 0; index < 4; ++index)
+        if (!isfinite(next[index]))
+            return false;
     MultiplyRowVector(next, view, vector);
+    for (size_t index = 0; index < 4; ++index)
+        if (!isfinite(vector[index]))
+            return false;
     const float fogCoordinate = fabsf(vector[2]);
     MultiplyRowVector(vector, projection, next);
+    for (size_t index = 0; index < 4; ++index)
+        if (!isfinite(next[index]))
+            return false;
 
     const float w = next[3];
+    if (w == 0.0f)
+        return false;
     HomogeneousPosition result;
     result.x = (viewport.x + 0.5f) * w + (next[0] + w) * viewport.width * 0.5f;
     result.y = (viewport.y + 0.5f) * w + (w - next[1]) * viewport.height * 0.5f;
     result.z = viewport.minZ * w + next[2] * (viewport.maxZ - viewport.minZ);
     result.w = w;
     result.fogCoordinate = fogCoordinate;
+    if (!isfinite(result.x) || !isfinite(result.y) || !isfinite(result.z) ||
+        !isfinite(result.w) || !isfinite(result.fogCoordinate))
+        return false;
     *output = result;
     return true;
 }
