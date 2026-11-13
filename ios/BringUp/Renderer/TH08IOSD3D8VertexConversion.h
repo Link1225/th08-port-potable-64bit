@@ -3,6 +3,7 @@
 #include "TH08IOSD3D8VertexLayout.h"
 #include "TH08IOSD3D8Transform.h"
 #include <limits>
+#include <new>
 #include <vector>
 
 namespace TH08IOSD3D8 {
@@ -81,6 +82,7 @@ enum class BatchConversionError {
     NullInput,
     NullOutput,
     CountOverflow,
+    AllocationFailed,
     VertexDecodeFailed
 };
 
@@ -112,16 +114,20 @@ static inline BatchConversionError ConvertVertices(
         return BatchConversionError::CountOverflow;
 
     std::vector<ConvertedVertex> converted;
-    converted.reserve(count);
-    const uint8_t *source = static_cast<const uint8_t *>(vertexBytes);
-    for (size_t index = 0; index < count; ++index) {
-        ConvertedVertex vertex = {};
-        const LayoutError error = ConvertVertex(
-            layout, source + index * stride, stride,
-            world, view, projection, textureTransform, viewport, &vertex);
-        if (error != LayoutError::None)
-            return BatchConversionError::VertexDecodeFailed;
-        converted.push_back(vertex);
+    try {
+        converted.reserve(count);
+        const uint8_t *source = static_cast<const uint8_t *>(vertexBytes);
+        for (size_t index = 0; index < count; ++index) {
+            ConvertedVertex vertex = {};
+            const LayoutError error = ConvertVertex(
+                layout, source + index * stride, stride,
+                world, view, projection, textureTransform, viewport, &vertex);
+            if (error != LayoutError::None)
+                return BatchConversionError::VertexDecodeFailed;
+            converted.push_back(vertex);
+        }
+    } catch (const std::bad_alloc &) {
+        return BatchConversionError::AllocationFailed;
     }
     output->swap(converted);
     return BatchConversionError::None;
