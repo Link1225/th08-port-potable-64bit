@@ -1422,6 +1422,57 @@
 }
 
 
+- (void)testD3D8SurfaceUploadsToRendererTexture
+{
+    TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]
+        initWithWidth:1 height:1 format:TH08IOSD3D8PixelFormatA8R8G8B8];
+    XCTAssertNotNil(surface);
+    TH08IOSD3D8LockedRect locked = {};
+    XCTAssertTrue([surface lockRect:nullptr flags:0u lockedRect:&locked]);
+    const uint8_t pixel[4] = {30u, 20u, 10u, 255u};
+    memcpy(locked.bits, pixel, sizeof(pixel));
+    XCTAssertTrue([surface unlockRect]);
+
+    TH08IOSD3D8DeviceAdapter *adapter =
+        [[TH08IOSD3D8DeviceAdapter alloc] initWithRenderer:self.renderer];
+    XCTAssertNotNil(adapter);
+    const GLuint texture = [adapter createTextureFromSurface:surface];
+    XCTAssertNotEqual(texture, 0u);
+
+    const GLuint target = [self.renderer createRenderTargetWithWidth:4 height:4];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:4 height:4]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255u, 255u, 255u, 255u},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255u, 255u, 255u, 255u},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255u, 255u, 255u, 255u},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255u, 255u, 255u, 255u},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255u, 255u, 255u, 255u},
+        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255u, 255u, 255u, 255u}
+    };
+    XCTAssertTrue([adapter drawVertices:vertices count:6
+                               primitive:TH08IOSRendererPrimitiveTriangles texture:texture]);
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:4 height:4];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = static_cast<const uint8_t *>(pixels.bytes);
+    const size_t center = (size_t)(2u * 4u + 2u) * 4u;
+    XCTAssertEqualWithAccuracy(bytes[center], 10u, 2u);
+    XCTAssertEqualWithAccuracy(bytes[center + 1u], 20u, 2u);
+    XCTAssertEqualWithAccuracy(bytes[center + 2u], 30u, 2u);
+    XCTAssertEqual(bytes[center + 3u], 255u);
+
+    XCTAssertTrue([surface lockRect:nullptr flags:TH08IOSD3D8LockReadOnly
+                         lockedRect:&locked]);
+    XCTAssertEqual([adapter createTextureFromSurface:surface], 0u);
+    XCTAssertTrue([surface unlockRect]);
+
+    XCTAssertTrue([adapter deleteTexture:texture]);
+    [self.renderer deleteTexture:target];
+}
+
 - (void)testD3D8SurfaceDescriptionAndSubrectangleLockPitch
 {
     TH08IOSD3D8Surface *surface = [[TH08IOSD3D8Surface alloc]

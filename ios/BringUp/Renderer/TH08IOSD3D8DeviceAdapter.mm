@@ -2,6 +2,7 @@
 #import "TH08IOSD3D8StateMapping.h"
 #import "TH08IOSD3D8VertexLayout.h"
 #import "TH08IOSD3D8VertexConversion.h"
+#import "TH08IOSD3D8Surface.h"
 #include <limits>
 #include <new>
 #include <vector>
@@ -112,6 +113,32 @@ TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
     }
     [_ownedTextures addObject:key];
     return texture;
+}
+
+- (GLuint)createTextureFromSurface:(TH08IOSD3D8Surface *)surface
+{
+    TH08IOSGLRenderer *renderer = _renderer;
+    if (renderer == nil || ![renderer isOwningContextCurrent] ||
+        surface == nil || surface.isLocked ||
+        surface.width == 0u || surface.height == 0u ||
+        surface.width > static_cast<uint32_t>(std::numeric_limits<GLsizei>::max()) ||
+        surface.height > static_cast<uint32_t>(std::numeric_limits<GLsizei>::max()))
+        return 0u;
+
+    // D3D8 surfaces expose top-left-origin rows. Preserve that row order in
+    // the uploaded texture so the engine's v=0 convention remains unchanged.
+    NSData *pixels = [surface copyRGBA8Pixels];
+    if (pixels == nil)
+        return 0u;
+    const size_t rowBytes = static_cast<size_t>(surface.width) * 4u;
+    if (rowBytes / 4u != static_cast<size_t>(surface.width) ||
+        static_cast<size_t>(surface.height) > std::numeric_limits<size_t>::max() / rowBytes ||
+        pixels.length != rowBytes * static_cast<size_t>(surface.height))
+        return 0u;
+    return [self createTextureWithRGBA8Pixels:pixels.bytes
+                                        width:static_cast<GLsizei>(surface.width)
+                                       height:static_cast<GLsizei>(surface.height)
+                                     rowBytes:rowBytes];
 }
 
 - (BOOL)deleteTexture:(GLuint)texture

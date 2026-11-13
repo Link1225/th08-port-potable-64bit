@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "TH08IOSGLRenderer.h"
+#import "TH08IOSD3D8Surface.h"
 #import "TH08IOSD3D8Transform.h"
 #include <stdint.h>
 NS_ASSUME_NONNULL_BEGIN
@@ -9,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
                                   width:(GLsizei)width
                                  height:(GLsizei)height
                                rowBytes:(size_t)rowBytes;
+- (GLuint)createTextureFromSurface:(TH08IOSD3D8Surface *)surface;
 - (BOOL)deleteTexture:(GLuint)texture;
 // Mirrors the single active D3D8 texture stage. Zero unbinds the texture.
 - (BOOL)setTexture:(GLuint)texture;
