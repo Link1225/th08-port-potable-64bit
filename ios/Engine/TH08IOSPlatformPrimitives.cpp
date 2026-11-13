@@ -42,8 +42,20 @@ DWORD GetCurrentThreadId(void)
 
 void InitializeCriticalSection(CRITICAL_SECTION *section)
 {
-    if (section != NULL)
+    if (section == NULL)
+        return;
+
+    pthread_mutexattr_t attributes;
+    if (pthread_mutexattr_init(&attributes) == 0)
+    {
+        pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutex_init(section, &attributes);
+        pthread_mutexattr_destroy(&attributes);
+    }
+    else
+    {
         pthread_mutex_init(section, NULL);
+    }
 }
 
 void DeleteCriticalSection(CRITICAL_SECTION *section)

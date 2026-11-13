@@ -26,6 +26,11 @@ int main()
 {
     CRITICAL_SECTION section;
     InitializeCriticalSection(&section);
+    EnterCriticalSection(&section);
+    EnterCriticalSection(&section);
+    LeaveCriticalSection(&section);
+    LeaveCriticalSection(&section);
+
     volatile int counter = 0;
     WorkerState state = {&section, &counter};
     pthread_t first;
