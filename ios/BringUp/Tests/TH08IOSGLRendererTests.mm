@@ -964,6 +964,12 @@
     XCTAssertFalse(ViewportToClipPosition(screen, invalid, output));
     for (size_t index = 0; index < 4; ++index)
         XCTAssertEqual(output[index], unchanged[index]);
+
+    HomogeneousPosition zeroW = screen;
+    zeroW.w = 0.0f;
+    XCTAssertFalse(ViewportToClipPosition(zeroW, viewport, output));
+    for (size_t index = 0; index < 4; ++index)
+        XCTAssertEqual(output[index], unchanged[index]);
 }
 
 - (void)testD3D8VertexConversionCombinesFVFTransformColorAndTextureCoordinates
