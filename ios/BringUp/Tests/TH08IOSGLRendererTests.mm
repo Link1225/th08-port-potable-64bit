@@ -885,6 +885,36 @@
     XCTAssertFalse(MapTextureAddress(1u, nullptr));
 }
 
+
+- (void)testD3D8ViewportCoordinatesConvertBackToES2ClipSpace
+{
+    using namespace TH08IOSD3D8;
+    const Viewport viewport = {10.0f, 20.0f, 200.0f, 100.0f, 0.2f, 0.8f};
+    const float ndc[4] = {0.25f, -0.5f, 0.4f, 2.0f};
+    HomogeneousPosition screen = {};
+    screen.x = (viewport.x + 0.5f) * ndc[3] +
+               (ndc[0] + ndc[3]) * viewport.width * 0.5f;
+    screen.y = (viewport.y + 0.5f) * ndc[3] +
+               (ndc[3] - ndc[1]) * viewport.height * 0.5f;
+    screen.z = viewport.minZ * ndc[3] +
+               ((ndc[2] / ndc[3] + 1.0f) * 0.5f) *
+               (viewport.maxZ - viewport.minZ) * ndc[3];
+    screen.w = ndc[3];
+
+    float clip[4] = {};
+    XCTAssertTrue(ViewportToClipPosition(screen, viewport, clip));
+    for (size_t index = 0; index < 4; ++index)
+        XCTAssertEqualWithAccuracy(clip[index], ndc[index], 0.0001f);
+
+    Viewport invalid = viewport;
+    invalid.height = 0.0f;
+    const float unchanged[4] = {9.0f, 8.0f, 7.0f, 6.0f};
+    float output[4] = {9.0f, 8.0f, 7.0f, 6.0f};
+    XCTAssertFalse(ViewportToClipPosition(screen, invalid, output));
+    for (size_t index = 0; index < 4; ++index)
+        XCTAssertEqual(output[index], unchanged[index]);
+}
+
 - (void)testD3D8VertexConversionCombinesFVFTransformColorAndTextureCoordinates
 {
     using namespace TH08IOSD3D8;
