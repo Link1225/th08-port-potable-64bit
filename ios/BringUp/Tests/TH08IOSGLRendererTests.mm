@@ -666,11 +666,17 @@
     const float uv0 = 0.375f;
     memcpy(raw, position, sizeof(position));
     memcpy(raw + 32, &diffuse, sizeof(diffuse));
-    const uint32_t specular = 0xA1B2C3D4u;\n    memcpy(raw + 36, &specular, sizeof(specular));\n    memcpy(raw + 40, &uv0, sizeof(uv0));
+    const uint32_t specular = 0xA1B2C3D4u;
+    memcpy(raw + 36, &specular, sizeof(specular));
+    memcpy(raw + 40, &uv0, sizeof(uv0));
     DecodedVertex decoded = {};
     XCTAssertEqual(static_cast<int>(DecodeVertex(layout, raw, sizeof(raw), &decoded)),
                    static_cast<int>(LayoutError::None));
-    XCTAssertTrue(decoded.rhw == 2.0f);\n    XCTAssertEqual(decoded.specularRed, (uint8_t)0xB2);\n    XCTAssertEqual(decoded.specularGreen, (uint8_t)0xC3);\n    XCTAssertEqual(decoded.specularBlue, (uint8_t)0xD4);\n    XCTAssertEqual(decoded.specularAlpha, (uint8_t)0xA1);
+    XCTAssertTrue(decoded.rhw == 2.0f);
+    XCTAssertEqual(decoded.specularRed, (uint8_t)0xB2);
+    XCTAssertEqual(decoded.specularGreen, (uint8_t)0xC3);
+    XCTAssertEqual(decoded.specularBlue, (uint8_t)0xD4);
+    XCTAssertEqual(decoded.specularAlpha, (uint8_t)0xA1);
     XCTAssertEqualWithAccuracy(decoded.u, 0.375f, 0.0001f);
     XCTAssertEqual(decoded.v, 0.0f);
 }
@@ -874,7 +880,8 @@
     XCTAssertEqualWithAccuracy(output.z, 0.75f, 0.0001f);
     XCTAssertEqualWithAccuracy(output.w, 1.0f, 0.0001f);
     XCTAssertEqualWithAccuracy(output.u, 0.2f, 0.0001f);
-    XCTAssertEqualWithAccuracy(output.v, 0.4f, 0.0001f);\n    XCTAssertEqual(output.specularRed, (uint8_t)0);
+    XCTAssertEqualWithAccuracy(output.v, 0.4f, 0.0001f);
+    XCTAssertEqual(output.specularRed, (uint8_t)0);
     XCTAssertEqual(output.red, (uint8_t)0x40);
     XCTAssertEqual(output.green, (uint8_t)0x20);
     XCTAssertEqual(output.blue, (uint8_t)0x10);

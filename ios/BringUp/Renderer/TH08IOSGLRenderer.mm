@@ -22,14 +22,17 @@ static const char *kVertexShader =
     "attribute vec2 a_texcoord;\n"
     "attribute vec4 a_color;\n"
     "attribute float a_fog_coordinate;\n"
+    "attribute vec4 a_specular;\n"
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
     "varying float v_fog_coordinate;\n"
+    "varying vec4 v_specular;\n"
     "void main() {\n"
     "  gl_Position = u_transform * vec4(a_position, 1.0);\n"
     "  v_texcoord = a_texcoord;\n"
     "  v_color = a_color;\n"
     "  v_fog_coordinate = a_fog_coordinate;\n"
+    "  v_specular = a_specular;\n"
     "}\n";
 
 static const char *kFragmentShader =
@@ -53,6 +56,7 @@ static const char *kFragmentShader =
     "varying vec2 v_texcoord;\n"
     "varying vec4 v_color;\n"
     "varying float v_fog_coordinate;\n"
+    "varying vec4 v_specular;\\n"
     "vec4 selectArgument(int argument, vec4 textureValue) {\n"
     "  if (argument == 0) return textureValue;\n"
     "  if (argument == 1) return v_color;\n"
@@ -86,6 +90,7 @@ static const char *kFragmentShader =
     "  vec4 alphaB = selectArgument(u_alpha_argument2, texel);\n"
     "  vec4 result = vec4(applyColorOperation(u_color_operation, colorA.rgb, colorB.rgb),\n"
     "                     applyAlphaOperation(u_alpha_operation, alphaA.a, alphaB.a));\n"
+    "  result.rgb = min(result.rgb + v_specular.rgb, vec3(1.0));\n"
     "  if (u_fog_enabled > 0.5) {\n"
     "    float fogAmount = clamp((u_fog_end - v_fog_coordinate) / (u_fog_end - u_fog_start), 0.0, 1.0);\n"
     "    result.rgb = mix(u_fog_color.rgb, result.rgb, fogAmount);\n"
@@ -139,7 +144,8 @@ GLuint CreateProgram()
         glBindAttribLocation(program, 0, "a_position");
         glBindAttribLocation(program, 1, "a_texcoord");
         glBindAttribLocation(program, 2, "a_color");
-    glBindAttribLocation(program, 3, "a_fog_coordinate");
+        glBindAttribLocation(program, 3, "a_fog_coordinate");
+        glBindAttribLocation(program, 4, "a_specular");
         glLinkProgram(program);
         GLint linked = GL_FALSE;
         glGetProgramiv(program, GL_LINK_STATUS, &linked);
@@ -871,7 +877,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
-    glEnableVertexAttribArray(3);\n    glEnableVertexAttribArray(4);
+    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, x)));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
@@ -880,11 +887,14 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, red)));
     glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, stride,
                           reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, fogCoordinate)));
+    glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
+                          reinterpret_cast<const GLvoid *>(offsetof(TH08IOSRendererVertex, specularRed)));
     glDrawArrays(static_cast<GLenum>(primitive), 0, count);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
-    glDisableVertexAttribArray(3);\n    glDisableVertexAttribArray(4);
+    glDisableVertexAttribArray(3);
+    glDisableVertexAttribArray(4);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     return glGetError() == GL_NO_ERROR;
 }
