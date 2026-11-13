@@ -101,15 +101,23 @@ static inline bool ViewportToClipPosition(const HomogeneousPosition &screenPosit
 static inline bool TransformXYZRHW(const float position[4],
                                    HomogeneousPosition *output)
 {
-    if (position == NULL || output == NULL)
+    if (position == NULL || output == NULL ||
+        !isfinite(position[0]) || !isfinite(position[1]) ||
+        !isfinite(position[2]) || !isfinite(position[3]) ||
+        !(position[3] > 0.0f))
         return false;
-    const float inverseW = position[3] != 0.0f ? 1.0f / position[3] : 1.0f;
+    const float inverseW = 1.0f / position[3];
+    if (!isfinite(inverseW))
+        return false;
     HomogeneousPosition result;
     result.x = (position[0] + 0.5f) * inverseW;
     result.y = (position[1] + 0.5f) * inverseW;
     result.z = position[2] * inverseW;
     result.w = inverseW;
     result.fogCoordinate = 0.0f;
+    if (!isfinite(result.x) || !isfinite(result.y) ||
+        !isfinite(result.z) || !isfinite(result.w))
+        return false;
     *output = result;
     return true;
 }
