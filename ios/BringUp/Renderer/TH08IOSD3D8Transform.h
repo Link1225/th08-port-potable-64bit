@@ -89,7 +89,7 @@ static inline bool ViewportToClipPosition(const HomogeneousPosition &screenPosit
                        viewport.height;
     const float depth = (screenPosition.z - viewport.minZ * w) /
                         (viewport.maxZ - viewport.minZ);
-    const float result[4] = {ndcX, ndcY, (2.0f * depth - 1.0f) * w, w};
+    const float result[4] = {ndcX, ndcY, 2.0f * depth - w, w};
     for (size_t index = 0; index < 4; ++index)
         if (!isfinite(result[index]))
             return false;
