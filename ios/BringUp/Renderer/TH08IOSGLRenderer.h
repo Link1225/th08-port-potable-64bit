@@ -34,9 +34,14 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
 
 - (nullable instancetype)initWithCurrentContext;
 - (BOOL)setViewportX:(GLint)x y:(GLint)y width:(GLsizei)width height:(GLsizei)height;
-- (void)setBlendingEnabled:(BOOL)enabled
+- (BOOL)setBlendingEnabled:(BOOL)enabled
              sourceFactor:(GLenum)sourceFactor
         destinationFactor:(GLenum)destinationFactor;
+// ES2 non-mipmap sampling modes. Defaults are linear filtering and clamp-to-edge.
+- (BOOL)setTextureMinificationFilter:(GLenum)minificationFilter
+                    magnificationFilter:(GLenum)magnificationFilter
+                                  wrapS:(GLenum)wrapS
+                                  wrapT:(GLenum)wrapT;
 // Matrix is a standard column-major OpenGL 4x4 transform; defaults to identity.
 - (BOOL)setTransformMatrix:(const GLfloat *)columnMajorMatrix;
 // Alpha comparison uses OpenGL ES comparison enums (GL_NEVER ... GL_ALWAYS).

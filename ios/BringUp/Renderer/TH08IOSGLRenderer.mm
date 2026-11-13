@@ -99,9 +99,49 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     if (width <= 0 || height <= 0)
         return false;
     const size_t minimumRow = static_cast<size_t>(width) * 4u;
-    if (rowBytes < minimumRow)
+    if (rowBytes < minimumRow || static_cast<size_t>(height) > SIZE_MAX / minimumRow)
         return false;
     return static_cast<size_t>(height - 1) <= (SIZE_MAX - minimumRow) / rowBytes;
+}
+
+bool IsValidBlendFactor(GLenum factor)
+{
+    switch (factor) {
+    case GL_ZERO: case GL_ONE:
+    case GL_SRC_COLOR: case GL_ONE_MINUS_SRC_COLOR:
+    case GL_DST_COLOR: case GL_ONE_MINUS_DST_COLOR:
+    case GL_SRC_ALPHA: case GL_ONE_MINUS_SRC_ALPHA:
+    case GL_DST_ALPHA: case GL_ONE_MINUS_DST_ALPHA:
+    case GL_SRC_ALPHA_SATURATE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool IsValidTextureFilter(GLenum filter)
+{
+    return filter == GL_NEAREST || filter == GL_LINEAR;
+}
+
+bool IsValidTextureWrap(GLenum wrap)
+{
+    return wrap == GL_CLAMP_TO_EDGE || wrap == GL_REPEAT || wrap == GL_MIRRORED_REPEAT;
+}
+
+bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
+{
+    switch (primitive) {
+    case TH08IOSRendererPrimitivePoints:
+    case TH08IOSRendererPrimitiveLines:
+    case TH08IOSRendererPrimitiveLineStrip:
+    case TH08IOSRendererPrimitiveTriangles:
+    case TH08IOSRendererPrimitiveTriangleStrip:
+    case TH08IOSRendererPrimitiveTriangleFan:
+        return true;
+    default:
+        return false;
+    }
 }
 
 } // namespace
@@ -125,6 +165,10 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     BOOL _depthWriteEnabled;
     GLenum _sourceFactor;
     GLenum _destinationFactor;
+    GLenum _minificationFilter;
+    GLenum _magnificationFilter;
+    GLenum _wrapS;
+    GLenum _wrapT;
     BOOL _hasViewport;
 }
 @end
@@ -167,6 +211,10 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     _depthWriteEnabled = YES;
     _sourceFactor = GL_SRC_ALPHA;
     _destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
+    _minificationFilter = GL_LINEAR;
+    _magnificationFilter = GL_LINEAR;
+    _wrapS = GL_CLAMP_TO_EDGE;
+    _wrapT = GL_CLAMP_TO_EDGE;
     _hasViewport = NO;
     return self;
 }
@@ -196,13 +244,32 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     return YES;
 }
 
-- (void)setBlendingEnabled:(BOOL)enabled
+- (BOOL)setBlendingEnabled:(BOOL)enabled
              sourceFactor:(GLenum)sourceFactor
         destinationFactor:(GLenum)destinationFactor
 {
+    if (!IsValidBlendFactor(sourceFactor) || !IsValidBlendFactor(destinationFactor))
+        return NO;
     _blendingEnabled = enabled;
     _sourceFactor = sourceFactor;
     _destinationFactor = destinationFactor;
+    return YES;
+}
+
+- (BOOL)setTextureMinificationFilter:(GLenum)minificationFilter
+                    magnificationFilter:(GLenum)magnificationFilter
+                                  wrapS:(GLenum)wrapS
+                                  wrapT:(GLenum)wrapT
+{
+    if (!IsValidTextureFilter(minificationFilter) ||
+        !IsValidTextureFilter(magnificationFilter) ||
+        !IsValidTextureWrap(wrapS) || !IsValidTextureWrap(wrapT))
+        return NO;
+    _minificationFilter = minificationFilter;
+    _magnificationFilter = magnificationFilter;
+    _wrapS = wrapS;
+    _wrapT = wrapT;
+    return YES;
 }
 
 - (BOOL)setTransformMatrix:(const GLfloat *)columnMajorMatrix
@@ -286,11 +353,15 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     if (texture == 0)
         return 0;
 
+    GLint previousTexture = 0;
+    GLint previousUnpackAlignment = 4;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(_minificationFilter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(_magnificationFilter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(_wrapS));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(_wrapT));
 
     const size_t packedRow = static_cast<size_t>(width) * 4u;
     const uint8_t *source = static_cast<const uint8_t *>(pixels);
@@ -301,12 +372,23 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
     } else {
         NSMutableData *packed = [NSMutableData dataWithLength:packedRow * static_cast<size_t>(height)];
         uint8_t *destination = static_cast<uint8_t *>(packed.mutableBytes);
+        if (destination == NULL) {
+            glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTexture));
+            return 0;
+        }
         for (GLsizei row = 0; row < height; ++row)
             memcpy(destination + static_cast<size_t>(row) * packedRow,
                    source + static_cast<size_t>(row) * rowBytes, packedRow);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, destination);
+    }
+    const GLenum uploadError = glGetError();
+    glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTexture));
+    if (uploadError != GL_NO_ERROR) {
+        glDeleteTextures(1, &texture);
+        return 0;
     }
     return texture;
 }
@@ -323,7 +405,8 @@ bool IsValidTextureSize(GLsizei width, GLsizei height, size_t rowBytes)
              texture:(GLuint)texture
 {
     if ([EAGLContext currentContext] != _context || !_hasViewport ||
-        vertices == NULL || count <= 0 || _program == 0 || _vertexBuffer == 0)
+        vertices == NULL || count <= 0 || !IsValidPrimitive(primitive) ||
+        _program == 0 || _vertexBuffer == 0)
         return NO;
 
     const size_t vertexBytes = static_cast<size_t>(count) * sizeof(TH08IOSRendererVertex);
