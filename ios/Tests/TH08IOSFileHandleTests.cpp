@@ -18,8 +18,10 @@ int main()
     assert(file.Write(original, sizeof(original)));
     assert(file.Tell() == sizeof(original));
     assert(file.GetSize() == sizeof(original));
-    assert(file.Seek(0, 0));
+    file.Close();
 
+    assert(file.Open(path, 'r'));
+    assert(file.Seek(0, 0));
     char buffer[sizeof(original)];
     memset(buffer, 0, sizeof(buffer));
     assert(file.Read(buffer, sizeof(buffer)) == sizeof(buffer));
