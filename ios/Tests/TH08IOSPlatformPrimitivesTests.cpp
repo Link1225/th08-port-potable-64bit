@@ -111,12 +111,12 @@ int main()
     snprintf(firstPath, sizeof(firstPath), "%s/score_1.260101.bak", directory);
     snprintf(secondPath, sizeof(secondPath), "%s/score_1.260102.bak", directory);
     snprintf(ignoredPath, sizeof(ignoredPath), "%s/other.dat", directory);
-    FILE *first = fopen(firstPath, "wb");
-    FILE *second = fopen(secondPath, "wb");
+    FILE *firstFile = fopen(firstPath, "wb");
+    FILE *secondFile = fopen(secondPath, "wb");
     FILE *ignored = fopen(ignoredPath, "wb");
-    assert(first != NULL && second != NULL && ignored != NULL);
-    fclose(first);
-    fclose(second);
+    assert(firstFile != NULL && secondFile != NULL && ignored != NULL);
+    fclose(firstFile);
+    fclose(secondFile);
     fclose(ignored);
 
     char pattern[512];
