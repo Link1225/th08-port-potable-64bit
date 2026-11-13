@@ -252,4 +252,72 @@
     [self.renderer deleteTexture:texture];
 }
 
+
+- (void)testBlendAndDepthTesting
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:1.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSRendererVertex vertices[6] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 128},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 128},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 128},
+        {-1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 255, 0, 0, 128},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 128},
+        { 1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 255, 0, 0, 128}
+    };
+    XCTAssertTrue([self.renderer setBlendingEnabled:YES
+                                        sourceFactor:GL_SRC_ALPHA
+                                   destinationFactor:GL_ONE_MINUS_SRC_ALPHA]);
+    [self.renderer setDepthTestingEnabled:YES writeEnabled:YES];
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    for (NSUInteger index = 0; index < 6; ++index) {
+        vertices[index].z = 0.5f;
+        vertices[index].red = 0;
+        vertices[index].green = 255;
+        vertices[index].alpha = 255;
+    }
+    XCTAssertTrue([self.renderer setBlendingEnabled:NO
+                                        sourceFactor:GL_ONE
+                                   destinationFactor:GL_ZERO]);
+    XCTAssertTrue([self.renderer drawVertices:vertices count:6
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertGreaterThan(bytes[center], (uint8_t)110);
+    XCTAssertLessThan(bytes[center], (uint8_t)145);
+    XCTAssertLessThan(bytes[center + 1], (uint8_t)20);
+    XCTAssertGreaterThan(bytes[center + 2], (uint8_t)110);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)145);
+
+    [self.renderer deleteTexture:target];
+}
+
+- (void)testRenderTargetRestoresDefaultViewport
+{
+    XCTAssertTrue([self.renderer setViewportX:2 y:3 width:7 height:6]);
+    const GLuint target = [self.renderer createRenderTargetWithWidth:4 height:4];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:4 height:4]);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:0]);
+
+    GLint viewport[4] = {0, 0, 0, 0};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    XCTAssertEqual(viewport[0], 2);
+    XCTAssertEqual(viewport[1], 3);
+    XCTAssertEqual(viewport[2], 7);
+    XCTAssertEqual(viewport[3], 6);
+
+    [self.renderer deleteTexture:target];
+}
+
 @end

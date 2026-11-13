@@ -58,6 +58,8 @@ jobs:
             -project ios/BringUp/TH08BringUp.xcodeproj \
             -scheme TH08BringUp \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination-timeout 90 \
+            -parallel-testing-enabled NO \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             test
