@@ -342,10 +342,10 @@ TH08IOSD3D8::Matrix4 IdentityD3DMatrix()
     TH08IOSGLRenderer *renderer = _renderer;
     if (renderer == nil || ![renderer isOwningContextCurrent] ||
         !IsValidD3DViewport(viewport) || viewport.x < 0.0f || viewport.y < 0.0f ||
-        viewport.x > static_cast<float>(std::numeric_limits<GLint>::max()) ||
-        viewport.y > static_cast<float>(std::numeric_limits<GLint>::max()) ||
-        viewport.width > static_cast<float>(std::numeric_limits<GLsizei>::max()) ||
-        viewport.height > static_cast<float>(std::numeric_limits<GLsizei>::max()) ||
+        viewport.x >= static_cast<float>(std::numeric_limits<GLint>::max()) ||
+        viewport.y >= static_cast<float>(std::numeric_limits<GLint>::max()) ||
+        viewport.width >= static_cast<float>(std::numeric_limits<GLsizei>::max()) ||
+        viewport.height >= static_cast<float>(std::numeric_limits<GLsizei>::max()) ||
         floorf(viewport.x) != viewport.x || floorf(viewport.y) != viewport.y ||
         floorf(viewport.width) != viewport.width ||
         floorf(viewport.height) != viewport.height)
