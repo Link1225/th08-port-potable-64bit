@@ -1,7 +1,9 @@
 name: iOS bring-up
 
 concurrency:
-  group: ios-bring-up-${{ github.ref }}
+  # Give each run its own group: GitHub otherwise replaces an older pending run
+  # even when cancel-in-progress is false.
+  group: ios-bring-up-${{ github.run_id }}
   cancel-in-progress: false
 
 on:
