@@ -67,9 +67,11 @@
         ![renderer setAlphaTestEnabled:_renderStates[15] != 0u compareFunction:alphaFunction
                               reference:(_renderStates[24] & 0xFFu) / 255.0f]) return NO;
     if (![renderer setFogEnabled:_renderStates[28] != 0u
-                        colorRed:((fogColor >> 16) & 0xFFu) / 255.0f
-                      colorGreen:((fogColor >> 8) & 0xFFu) / 255.0f
-                       colorBlue:(fogColor & 0xFFu) / 255.0f start:fogStart end:fogEnd]) return NO;
+                          colorRed:((fogColor >> 16) & 0xFFu) / 255.0f
+                                 green:((fogColor >> 8) & 0xFFu) / 255.0f
+                                  blue:(fogColor & 0xFFu) / 255.0f
+                                  start:fogStart
+                                    end:fogEnd]) return NO;
     const uint32_t factor = _renderStates[60];
     [renderer setTextureFactorRed:(factor >> 16) & 0xFFu green:(factor >> 8) & 0xFFu
                               blue:factor & 0xFFu alpha:(factor >> 24) & 0xFFu];
