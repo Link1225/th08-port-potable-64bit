@@ -366,7 +366,10 @@ void *TimerEntry(void *rawTimer)
     pthread_cond_broadcast(&timer->condition);
     pthread_mutex_unlock(&timer->mutex);
     if (destroyOnExit)
+    {
+        pthread_detach(pthread_self());
         DestroyTimer(timer);
+    }
     return NULL;
 }
 } // namespace
