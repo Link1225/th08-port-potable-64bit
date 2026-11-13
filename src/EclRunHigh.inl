@@ -512,7 +512,7 @@ C_ASSERT(TH08_ECL_ENEMY_POSITION_OFFSET == 0x2D34);
             Float3 bossMarkerPosition(-999.0f, -999.0f, 0.0f);
             g_AsciiManager.SetBossMarkerPosition(
                 TH08_ECL_CONTEXT_ENEMY(ctx)->bossSlot,
-                &bossMarkerPosition);
+                D3DXVECTOR3_PTR(&bossMarkerPosition));
         }
         break;
 
