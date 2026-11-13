@@ -513,6 +513,32 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     return glGetError() == GL_NO_ERROR;
 }
 
+- (nullable NSData *)copyCurrentFramebufferRGBA8PixelsWithWidth:(GLsizei)width
+                                                         height:(GLsizei)height
+{
+    if ([EAGLContext currentContext] != _context || width <= 0 || height <= 0)
+        return nil;
+    const size_t rowBytes = static_cast<size_t>(width) * 4u;
+    if (rowBytes / 4u != static_cast<size_t>(width) ||
+        static_cast<size_t>(height) > SIZE_MAX / rowBytes ||
+        rowBytes * static_cast<size_t>(height) > static_cast<size_t>(PTRDIFF_MAX))
+        return nil;
+
+    while (glGetError() != GL_NO_ERROR) {}
+    GLint previousPackAlignment = 4;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &previousPackAlignment);
+    NSMutableData *pixels = [NSMutableData dataWithLength:rowBytes * static_cast<size_t>(height)];
+    if (pixels == nil || pixels.mutableBytes == NULL)
+        return nil;
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.mutableBytes);
+    const GLenum readError = glGetError();
+    glPixelStorei(GL_PACK_ALIGNMENT, previousPackAlignment);
+    if (readError != GL_NO_ERROR)
+        return nil;
+    return [pixels copy];
+}
+
 - (void)deleteTexture:(GLuint)texture
 {
     if (texture == 0 || [EAGLContext currentContext] != _context)
