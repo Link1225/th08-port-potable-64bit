@@ -52,13 +52,13 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
-      - name: Ensure an iOS Simulator runtime is available
+      - name: Ensure an iPhone 14 Plus Simulator is available
         run: |
-          if ! xcrun simctl list devices available | grep -q 'iPhone'; then
+          if ! xcrun simctl list devices available | grep -q 'iPhone 14 Plus'; then
             xcodebuild -downloadPlatform iOS
           fi
           xcrun simctl list devices available
-      - name: Run OpenGL ES renderer tests
+      - name: Run OpenGL ES renderer tests on iPhone 14 Plus
         run: |
           DEVICE_ID="$(python3 - <<'PY'
           import json
@@ -71,10 +71,10 @@ jobs:
               device
               for runtime_devices in data["devices"].values()
               for device in runtime_devices
-              if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
+              if device.get("isAvailable") and device.get("name") == "iPhone 14 Plus"
           ]
           if not devices:
-              raise SystemExit("No available iPhone simulator after installing the iOS runtime.")
+              raise SystemExit("iPhone 14 Plus simulator is unavailable after installing the iOS runtime.")
           print(devices[0]["udid"])
           PY
           )"
