@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <mmsystem.h>
 
 #include <assert.h>
 #include <pthread.h>
@@ -25,6 +26,25 @@ static void *IncrementWorker(void *argument)
         LeaveCriticalSection(state->section);
     }
     return NULL;
+}
+
+DWORD timeGetTime(void);
+
+struct TimerCounter
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    UINT count;
+};
+
+static UINT TimerCallback(UINT, UINT, DWORD_PTR userData, DWORD_PTR, DWORD_PTR)
+{
+    TimerCounter *counter = reinterpret_cast<TimerCounter *>(userData);
+    pthread_mutex_lock(&counter->mutex);
+    ++counter->count;
+    pthread_cond_broadcast(&counter->condition);
+    pthread_mutex_unlock(&counter->mutex);
+    return 0;
 }
 
 struct ThreadArguments
@@ -136,5 +156,35 @@ int main()
     assert(CloseHandle(thread));
     pthread_cond_destroy(&arguments.condition);
     pthread_mutex_destroy(&arguments.mutex);
+
+    TIMECAPS capabilities;
+    assert(timeGetDevCaps(&capabilities, sizeof(capabilities)) == MMSYSERR_NOERROR);
+    assert(capabilities.wPeriodMin == 1);
+    assert(timeBeginPeriod(1) == MMSYSERR_NOERROR);
+    const DWORD timerStart = timeGetTime();
+    Sleep(3);
+    assert(timeGetTime() >= timerStart);
+    assert(timeEndPeriod(1) == MMSYSERR_NOERROR);
+
+    TimerCounter timerCounter;
+    timerCounter.count = 0;
+    assert(pthread_mutex_init(&timerCounter.mutex, NULL) == 0);
+    assert(pthread_cond_init(&timerCounter.condition, NULL) == 0);
+    const UINT timerId = timeSetEvent(5, 1, TimerCallback,
+                                      reinterpret_cast<DWORD_PTR>(&timerCounter),
+                                      TIME_PERIODIC);
+    assert(timerId != 0);
+    pthread_mutex_lock(&timerCounter.mutex);
+    while (timerCounter.count < 3)
+        pthread_cond_wait(&timerCounter.condition, &timerCounter.mutex);
+    pthread_mutex_unlock(&timerCounter.mutex);
+    assert(timeKillEvent(timerId) == MMSYSERR_NOERROR);
+    assert(timerCounter.count >= 3);
+    pthread_cond_destroy(&timerCounter.condition);
+    pthread_mutex_destroy(&timerCounter.mutex);
+
+    HMIDIOUT midiHandle = reinterpret_cast<HMIDIOUT>(1);
+    assert(midiOutOpen(&midiHandle, MIDI_MAPPER, 0, 0, 0) != MMSYSERR_NOERROR);
+    assert(midiHandle == NULL);
     return 0;
 }

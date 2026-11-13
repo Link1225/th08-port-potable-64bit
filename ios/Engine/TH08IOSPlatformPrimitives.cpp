@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <mmsystem.h>
 
 #include <errno.h>
 #include <glob.h>
@@ -300,3 +301,194 @@ BOOL CloseHandle(HANDLE rawHandle)
     delete handle;
     return TRUE;
 }
+
+namespace
+{
+struct IOSTimerHandle
+{
+    UINT identifier;
+    UINT delayMilliseconds;
+    UINT flags;
+    LPTIMECALLBACK callback;
+    DWORD_PTR userData;
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    BOOL stopRequested;
+    BOOL finished;
+    BOOL destroyOnExit;
+};
+
+pthread_mutex_t g_IOS_timerListMutex = PTHREAD_MUTEX_INITIALIZER;
+IOSTimerHandle *g_IOS_timers[32] = {0};
+UINT g_IOS_nextTimerIdentifier = 1;
+
+void DestroyTimer(IOSTimerHandle *timer)
+{
+    pthread_cond_destroy(&timer->condition);
+    pthread_mutex_destroy(&timer->mutex);
+    delete timer;
+}
+
+void *TimerEntry(void *rawTimer)
+{
+    IOSTimerHandle *timer = static_cast<IOSTimerHandle *>(rawTimer);
+    for (;;)
+    {
+        struct timespec deadline;
+        clock_gettime(CLOCK_REALTIME, &deadline);
+        deadline.tv_sec += static_cast<time_t>(timer->delayMilliseconds / 1000U);
+        deadline.tv_nsec += static_cast<long>((timer->delayMilliseconds % 1000U) * 1000000U);
+        if (deadline.tv_nsec >= 1000000000L)
+        {
+            ++deadline.tv_sec;
+            deadline.tv_nsec -= 1000000000L;
+        }
+
+        pthread_mutex_lock(&timer->mutex);
+        int result = 0;
+        while (!timer->stopRequested && result == 0)
+            result = pthread_cond_timedwait(&timer->condition, &timer->mutex, &deadline);
+        const BOOL shouldStop = timer->stopRequested;
+        pthread_mutex_unlock(&timer->mutex);
+
+        if (shouldStop)
+            break;
+        if (result == ETIMEDOUT)
+            timer->callback(timer->identifier, 0, timer->userData, 0, 0);
+        if ((timer->flags & TIME_PERIODIC) == 0)
+            break;
+    }
+
+    pthread_mutex_lock(&timer->mutex);
+    timer->finished = TRUE;
+    const BOOL destroyOnExit = timer->destroyOnExit;
+    pthread_cond_broadcast(&timer->condition);
+    pthread_mutex_unlock(&timer->mutex);
+    if (destroyOnExit)
+        DestroyTimer(timer);
+    return NULL;
+}
+} // namespace
+
+DWORD timeGetTime(void)
+{
+    LARGE_INTEGER counter;
+    if (!QueryPerformanceCounter(&counter))
+        return 0;
+    return static_cast<DWORD>(counter.QuadPart / 1000000LL);
+}
+
+MMRESULT timeGetDevCaps(TIMECAPS *caps, UINT size)
+{
+    if (caps == NULL || size < sizeof(TIMECAPS))
+        return 1;
+    caps->wPeriodMin = 1;
+    caps->wPeriodMax = 1000;
+    return MMSYSERR_NOERROR;
+}
+
+MMRESULT timeBeginPeriod(UINT)
+{
+    return MMSYSERR_NOERROR;
+}
+
+MMRESULT timeEndPeriod(UINT)
+{
+    return MMSYSERR_NOERROR;
+}
+
+UINT timeSetEvent(UINT delay, UINT, LPTIMECALLBACK callback, DWORD_PTR userData, UINT flags)
+{
+    if (delay == 0 || callback == NULL)
+        return 0;
+    IOSTimerHandle *timer = new (std::nothrow) IOSTimerHandle();
+    if (timer == NULL)
+        return 0;
+    memset(timer, 0, sizeof(*timer));
+    timer->delayMilliseconds = delay;
+    timer->flags = flags;
+    timer->callback = callback;
+    timer->userData = userData;
+    pthread_mutex_init(&timer->mutex, NULL);
+    pthread_cond_init(&timer->condition, NULL);
+
+    pthread_mutex_lock(&g_IOS_timerListMutex);
+    size_t slot = 32;
+    for (size_t i = 0; i < 32; ++i)
+    {
+        if (g_IOS_timers[i] == NULL)
+        {
+            slot = i;
+            break;
+        }
+    }
+    if (slot == 32)
+    {
+        pthread_mutex_unlock(&g_IOS_timerListMutex);
+        DestroyTimer(timer);
+        return 0;
+    }
+    timer->identifier = g_IOS_nextTimerIdentifier++;
+    if (timer->identifier == 0)
+        timer->identifier = g_IOS_nextTimerIdentifier++;
+    g_IOS_timers[slot] = timer;
+    pthread_mutex_unlock(&g_IOS_timerListMutex);
+
+    if (pthread_create(&timer->thread, NULL, TimerEntry, timer) != 0)
+    {
+        pthread_mutex_lock(&g_IOS_timerListMutex);
+        g_IOS_timers[slot] = NULL;
+        pthread_mutex_unlock(&g_IOS_timerListMutex);
+        DestroyTimer(timer);
+        return 0;
+    }
+    return timer->identifier;
+}
+
+MMRESULT timeKillEvent(UINT identifier)
+{
+    IOSTimerHandle *timer = NULL;
+    pthread_mutex_lock(&g_IOS_timerListMutex);
+    for (size_t i = 0; i < 32; ++i)
+    {
+        if (g_IOS_timers[i] != NULL && g_IOS_timers[i]->identifier == identifier)
+        {
+            timer = g_IOS_timers[i];
+            g_IOS_timers[i] = NULL;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_IOS_timerListMutex);
+    if (timer == NULL)
+        return 1;
+
+    pthread_mutex_lock(&timer->mutex);
+    timer->stopRequested = TRUE;
+    const BOOL calledFromTimerThread = pthread_equal(pthread_self(), timer->thread);
+    if (calledFromTimerThread)
+        timer->destroyOnExit = TRUE;
+    pthread_cond_broadcast(&timer->condition);
+    pthread_mutex_unlock(&timer->mutex);
+
+    if (!calledFromTimerThread)
+    {
+        if (pthread_join(timer->thread, NULL) != 0)
+            return 1;
+        DestroyTimer(timer);
+    }
+    return MMSYSERR_NOERROR;
+}
+
+MMRESULT midiOutOpen(HMIDIOUT *output, UINT, DWORD_PTR, DWORD_PTR, DWORD)
+{
+    if (output != NULL)
+        *output = NULL;
+    return 1;
+}
+MMRESULT midiOutClose(HMIDIOUT) { return 1; }
+MMRESULT midiOutReset(HMIDIOUT) { return 1; }
+MMRESULT midiOutPrepareHeader(HMIDIOUT, LPMIDIHDR, UINT) { return 1; }
+MMRESULT midiOutUnprepareHeader(HMIDIOUT, LPMIDIHDR, UINT) { return 1; }
+MMRESULT midiOutLongMsg(HMIDIOUT, LPMIDIHDR, UINT) { return 1; }
+MMRESULT midiOutShortMsg(HMIDIOUT, DWORD) { return 1; }
