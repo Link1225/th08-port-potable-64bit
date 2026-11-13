@@ -55,6 +55,10 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
                                  width:(GLsizei)width
                                 height:(GLsizei)height
                               rowBytes:(size_t)rowBytes;
+// Render targets are RGBA8 textures with a 16-bit depth attachment.
+// Pass texture 0 to bind the original framebuffer captured at initialization.
+- (GLuint)createRenderTargetWithWidth:(GLsizei)width height:(GLsizei)height;
+- (BOOL)bindRenderTargetTexture:(GLuint)texture;
 - (void)deleteTexture:(GLuint)texture;
 - (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
                count:(GLsizei)count

@@ -4,8 +4,17 @@
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include <map>
+#include <new>
 
 namespace {
+
+struct RenderTargetResources {
+    GLuint framebuffer;
+    GLuint depthBuffer;
+    GLsizei width;
+    GLsizei height;
+};
 
 static const char *kVertexShader =
     "attribute vec3 a_position;\n"
@@ -148,6 +157,8 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 
 @interface TH08IOSGLRenderer () {
     EAGLContext *_context;
+    GLuint _defaultFramebuffer;
+    std::map<GLuint, RenderTargetResources> _renderTargets;
     GLuint _program;
     GLuint _vertexBuffer;
     GLint _samplerLocation;
@@ -184,6 +195,9 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     if (context == nil)
         return nil;
     _context = context;
+    GLint defaultFramebuffer = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &defaultFramebuffer);
+    _defaultFramebuffer = static_cast<GLuint>(defaultFramebuffer);
 
     _program = CreateProgram();
     if (_program == 0)
@@ -226,6 +240,17 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     EAGLContext *previousContext = [EAGLContext currentContext];
     const BOOL changedContext = previousContext != _context;
     if (_context != nil && (!changedContext || [EAGLContext setCurrentContext:_context])) {
+        for (std::map<GLuint, RenderTargetResources>::const_iterator it = _renderTargets.begin();
+             it != _renderTargets.end(); ++it) {
+            const GLuint texture = it->first;
+            const RenderTargetResources &resources = it->second;
+            if (resources.framebuffer != 0)
+                glDeleteFramebuffers(1, &resources.framebuffer);
+            if (resources.depthBuffer != 0)
+                glDeleteRenderbuffers(1, &resources.depthBuffer);
+            if (texture != 0)
+                glDeleteTextures(1, &texture);
+        }
         if (_vertexBuffer != 0)
             glDeleteBuffers(1, &_vertexBuffer);
         if (_program != 0)
@@ -396,10 +421,101 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     return texture;
 }
 
+- (GLuint)createRenderTargetWithWidth:(GLsizei)width height:(GLsizei)height
+{
+    if ([EAGLContext currentContext] != _context || width <= 0 || height <= 0)
+        return 0;
+    GLint previousTexture = 0;
+    GLint previousFramebuffer = 0;
+    GLint previousRenderbuffer = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFramebuffer);
+    glGetIntegerv(GL_RENDERBUFFER_BINDING, &previousRenderbuffer);
+    while (glGetError() != GL_NO_ERROR) {}
+
+    GLuint texture = 0;
+    GLuint framebuffer = 0;
+    GLuint depthBuffer = 0;
+    glGenTextures(1, &texture);
+    if (texture == 0)
+        return 0;
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, NULL);
+
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    glGenRenderbuffers(1, &depthBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    const GLenum error = glGetError();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previousFramebuffer));
+    glBindRenderbuffer(GL_RENDERBUFFER, static_cast<GLuint>(previousRenderbuffer));
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTexture));
+    if (status != GL_FRAMEBUFFER_COMPLETE || error != GL_NO_ERROR || framebuffer == 0 || depthBuffer == 0) {
+        if (framebuffer != 0) glDeleteFramebuffers(1, &framebuffer);
+        if (depthBuffer != 0) glDeleteRenderbuffers(1, &depthBuffer);
+        if (texture != 0) glDeleteTextures(1, &texture);
+        return 0;
+    }
+
+    RenderTargetResources resources;
+    resources.framebuffer = framebuffer;
+    resources.depthBuffer = depthBuffer;
+    resources.width = width;
+    resources.height = height;
+    try {
+        _renderTargets.insert(std::make_pair(texture, resources));
+    } catch (const std::bad_alloc &) {
+        glDeleteFramebuffers(1, &framebuffer);
+        glDeleteRenderbuffers(1, &depthBuffer);
+        glDeleteTextures(1, &texture);
+        return 0;
+    }
+    return texture;
+}
+
+- (BOOL)bindRenderTargetTexture:(GLuint)texture
+{
+    if ([EAGLContext currentContext] != _context)
+        return NO;
+    if (texture == 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, _defaultFramebuffer);
+        return glGetError() == GL_NO_ERROR;
+    }
+    std::map<GLuint, RenderTargetResources>::const_iterator it = _renderTargets.find(texture);
+    if (it == _renderTargets.end())
+        return NO;
+    glBindFramebuffer(GL_FRAMEBUFFER, it->second.framebuffer);
+    glViewport(0, 0, it->second.width, it->second.height);
+    return glGetError() == GL_NO_ERROR;
+}
+
 - (void)deleteTexture:(GLuint)texture
 {
-    if (texture != 0 && [EAGLContext currentContext] == _context)
-        glDeleteTextures(1, &texture);
+    if (texture == 0 || [EAGLContext currentContext] != _context)
+        return;
+    std::map<GLuint, RenderTargetResources>::iterator it = _renderTargets.find(texture);
+    if (it != _renderTargets.end()) {
+        GLint currentFramebuffer = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFramebuffer);
+        if (static_cast<GLuint>(currentFramebuffer) == it->second.framebuffer)
+            glBindFramebuffer(GL_FRAMEBUFFER, _defaultFramebuffer);
+        if (it->second.framebuffer != 0)
+            glDeleteFramebuffers(1, &it->second.framebuffer);
+        if (it->second.depthBuffer != 0)
+            glDeleteRenderbuffers(1, &it->second.depthBuffer);
+        _renderTargets.erase(it);
+    }
+    glDeleteTextures(1, &texture);
 }
 
 - (BOOL)drawVertices:(const TH08IOSRendererVertex *)vertices
