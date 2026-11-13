@@ -4,6 +4,7 @@
 #include <array>
 #include <limits>
 #include <new>
+#include <stdexcept>
 #include <vector>
 #include <string.h>
 
