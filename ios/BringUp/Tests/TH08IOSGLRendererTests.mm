@@ -955,9 +955,9 @@
         uint32_t diffuse;
     };
     const D3D8TransformedVertex transformedVertices[3] = {
-        {0.0f, 8.0f, 0.5f, 1.0f, 0xFFFF0000u},
-        {8.0f, 8.0f, 0.5f, 1.0f, 0xFFFF0000u},
-        {4.0f, 0.0f, 0.5f, 1.0f, 0xFFFF0000u}
+        {0.0f, 8.0f, 0.5f, 0.5f, 0xFFFF0000u},
+        {8.0f, 8.0f, 0.5f, 0.5f, 0xFFFF0000u},
+        {4.0f, 0.0f, 0.5f, 0.5f, 0xFFFF0000u}
     };
     [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
     XCTAssertTrue([adapter drawCurrentFVFVertices:transformedVertices
@@ -974,6 +974,33 @@
 
     XCTAssertTrue([self.renderer bindRenderTargetTexture:0]);
     [self.renderer deleteTexture:target];
+}
+
+- (void)testD3D8TransformedVerticesRejectInvalidRHW
+{
+    using namespace TH08IOSD3D8;
+    const float valid[4] = {12.0f, 24.0f, 0.5f, 0.5f};
+    HomogeneousPosition output = {};
+    XCTAssertTrue(TransformXYZRHW(valid, &output));
+    XCTAssertEqualWithAccuracy(output.x, 25.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.y, 49.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.z, 1.0f, 0.0001f);
+    XCTAssertEqualWithAccuracy(output.w, 2.0f, 0.0001f);
+
+    const HomogeneousPosition unchanged = output;
+    const float zeroRHW[4] = {12.0f, 24.0f, 0.5f, 0.0f};
+    XCTAssertFalse(TransformXYZRHW(zeroRHW, &output));
+    XCTAssertEqual(output.x, unchanged.x);
+    XCTAssertEqual(output.y, unchanged.y);
+    XCTAssertEqual(output.z, unchanged.z);
+    XCTAssertEqual(output.w, unchanged.w);
+
+    const float invalidRHW[4] = {12.0f, 24.0f, 0.5f, NAN};
+    XCTAssertFalse(TransformXYZRHW(invalidRHW, &output));
+    XCTAssertEqual(output.x, unchanged.x);
+    XCTAssertEqual(output.y, unchanged.y);
+    XCTAssertEqual(output.z, unchanged.z);
+    XCTAssertEqual(output.w, unchanged.w);
 }
 
 - (void)testD3D8ViewportCoordinatesConvertBackToES2ClipSpace
