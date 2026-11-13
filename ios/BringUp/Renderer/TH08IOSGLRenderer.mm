@@ -158,6 +158,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
 @interface TH08IOSGLRenderer () {
     EAGLContext *_context;
     GLuint _defaultFramebuffer;
+    GLint _defaultViewport[4];
     std::map<GLuint, RenderTargetResources> _renderTargets;
     GLuint _program;
     GLuint _vertexBuffer;
@@ -198,6 +199,7 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLint defaultFramebuffer = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &defaultFramebuffer);
     _defaultFramebuffer = static_cast<GLuint>(defaultFramebuffer);
+    glGetIntegerv(GL_VIEWPORT, _defaultViewport);
 
     _program = CreateProgram();
     if (_program == 0)
@@ -488,12 +490,16 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     if ([EAGLContext currentContext] != _context)
         return NO;
     if (texture == 0) {
+        while (glGetError() != GL_NO_ERROR) {}
         glBindFramebuffer(GL_FRAMEBUFFER, _defaultFramebuffer);
+        glViewport(_defaultViewport[0], _defaultViewport[1],
+                   _defaultViewport[2], _defaultViewport[3]);
         return glGetError() == GL_NO_ERROR;
     }
     std::map<GLuint, RenderTargetResources>::const_iterator it = _renderTargets.find(texture);
     if (it == _renderTargets.end())
         return NO;
+    while (glGetError() != GL_NO_ERROR) {}
     glBindFramebuffer(GL_FRAMEBUFFER, it->second.framebuffer);
     glViewport(0, 0, it->second.width, it->second.height);
     return glGetError() == GL_NO_ERROR;
