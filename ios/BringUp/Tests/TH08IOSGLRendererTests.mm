@@ -4,6 +4,7 @@
 
 #import "../Renderer/TH08IOSGLRenderer.h"
 #import "../Renderer/TH08IOSD3D8VertexLayout.h"
+#import "../Renderer/TH08IOSD3D8StateMapping.h"
 
 @interface TH08IOSGLRendererTests : XCTestCase
 @property(nonatomic, strong) EAGLContext *context;
@@ -684,5 +685,64 @@
                    static_cast<int>(LayoutError::StrideTooSmall));
     XCTAssertEqual(static_cast<int>(BuildVertexLayout(FVF_XYZ, NULL)),
                    static_cast<int>(LayoutError::NullOutput));
+}
+
+- (void)testD3D8StateMappingCoversSupportedTextureOperations
+{
+    using namespace TH08IOSD3D8;
+    const uint32_t d3dOperations[] = {2u, 3u, 4u, 7u, 10u, 8u, 5u, 6u};
+    const TextureOperation expected[] = {
+        TextureSelectArg1, TextureSelectArg2, TextureModulate, TextureAdd,
+        TextureSubtract, TextureAddSigned, TextureModulate2X, TextureModulate4X
+    };
+    for (NSUInteger index = 0; index < sizeof(d3dOperations) / sizeof(d3dOperations[0]); ++index) {
+        TextureOperation actual = TextureSelectArg1;
+        XCTAssertTrue(MapTextureOperation(d3dOperations[index], &actual));
+        XCTAssertEqual(static_cast<int>(actual), static_cast<int>(expected[index]));
+    }
+    TextureOperation unsupported = TextureSelectArg1;
+    XCTAssertFalse(MapTextureOperation(1u, &unsupported)); // D3DTOP_DISABLE is a separate stage state.
+}
+
+- (void)testD3D8StateMappingRejectsUnimplementedArgumentModifiers
+{
+    using namespace TH08IOSD3D8;
+    TextureArgument argument = TextureArgumentTexture;
+    XCTAssertTrue(MapTextureArgument(0u, &argument));
+    XCTAssertEqual(static_cast<int>(argument), static_cast<int>(TextureArgumentDiffuse));
+    XCTAssertTrue(MapTextureArgument(2u, &argument));
+    XCTAssertEqual(static_cast<int>(argument), static_cast<int>(TextureArgumentTexture));
+    XCTAssertTrue(MapTextureArgument(3u, &argument));
+    XCTAssertEqual(static_cast<int>(argument), static_cast<int>(TextureArgumentFactor));
+    XCTAssertFalse(MapTextureArgument(0x12u, &argument)); // D3DTA_COMPLEMENT
+    XCTAssertFalse(MapTextureArgument(1u, &argument)); // D3DTA_CURRENT is not guessed as diffuse.
+}
+
+- (void)testD3D8StateMappingCoversCompareAndBlendFunctions
+{
+    using namespace TH08IOSD3D8;
+    const GLenum compareExpected[] = {
+        GL_NEVER, GL_LESS, GL_EQUAL, GL_LEQUAL,
+        GL_GREATER, GL_NOTEQUAL, GL_GEQUAL, GL_ALWAYS
+    };
+    for (uint32_t d3d = 1u; d3d <= 8u; ++d3d) {
+        GLenum actual = 0;
+        XCTAssertTrue(MapCompareFunction(d3d, &actual));
+        XCTAssertEqual(actual, compareExpected[d3d - 1u]);
+    }
+    const GLenum blendExpected[] = {
+        GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR,
+        GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_DST_ALPHA,
+        GL_ONE_MINUS_DST_ALPHA, GL_DST_COLOR, GL_ONE_MINUS_DST_COLOR,
+        GL_SRC_ALPHA_SATURATE
+    };
+    for (uint32_t d3d = 1u; d3d <= 11u; ++d3d) {
+        GLenum actual = 0;
+        XCTAssertTrue(MapBlendFactor(d3d, &actual));
+        XCTAssertEqual(actual, blendExpected[d3d - 1u]);
+    }
+    GLenum unsupported = 0;
+    XCTAssertFalse(MapCompareFunction(0u, &unsupported));
+    XCTAssertFalse(MapBlendFactor(12u, &unsupported));
 }
 @end
