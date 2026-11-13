@@ -107,6 +107,9 @@ static inline BatchConversionError ConvertVertices(
         return BatchConversionError::CountOverflow;
     if (count != 0u && stride < layout.requiredStride)
         return BatchConversionError::VertexDecodeFailed;
+    if (count > 1u && stride != 0u &&
+        count - 1u > std::numeric_limits<size_t>::max() / stride)
+        return BatchConversionError::CountOverflow;
 
     std::vector<ConvertedVertex> converted;
     converted.reserve(count);
