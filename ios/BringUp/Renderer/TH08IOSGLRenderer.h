@@ -2,6 +2,8 @@
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
 
+#include <stdint.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef struct TH08IOSRendererVertex {
@@ -67,6 +69,12 @@ typedef NS_ENUM(NSUInteger, TH08IOSRendererPrimitive) {
                         alphaOperation:(TH08IOSRendererTextureOperation)alphaOperation
                       alphaArgument1:(TH08IOSRendererTextureArgument)alphaArgument1
                       alphaArgument2:(TH08IOSRendererTextureArgument)alphaArgument2;
+// D3DTA modifiers: bit 0 complements the selected argument; bit 1 replicates
+// its alpha component into RGBA. Each color/alpha argument is independent.
+- (BOOL)setTextureStageArgumentModifiersColor1:(uint8_t)color1
+                                         color2:(uint8_t)color2
+                                          alpha1:(uint8_t)alpha1
+                                          alpha2:(uint8_t)alpha2;
 - (void)setTextureFactorRed:(GLubyte)red green:(GLubyte)green blue:(GLubyte)blue alpha:(GLubyte)alpha;
 - (BOOL)setFogEnabled:(BOOL)enabled colorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue start:(GLfloat)start end:(GLfloat)end;
 // ES2 non-mipmap sampling modes. Defaults are linear filtering and clamp-to-edge.

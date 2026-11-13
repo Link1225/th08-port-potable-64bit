@@ -52,12 +52,16 @@ made with a different current context. It provides:
 The XCTest suite covers render-target lifecycle, texture upload/sampling,
 transform and alpha behavior, blend/depth/scissor state, fog, texture-stage
 combining, FVF layout/decoding, D3D8 state mapping, and combined vertex
-conversion. The latest additions decode the D3DTA complement and alpha-replicate
-modifier bits into an explicit argument-state structure. The older
-`MapTextureArgument` helper intentionally remains fail-closed when modifiers
-are present because the fragment shader has not yet consumed those modifier
-flags. Dedicated XCTest cases verify selector decoding, each modifier, both
-modifiers together, reserved-bit rejection, and the legacy helper's behavior.
+conversion. The D3DTA complement and alpha-replicate bits are decoded into an explicit
+argument-state structure and consumed by the ES2 fragment shader. Complement
+is applied first; alpha replication then broadcasts the resulting alpha value
+to RGBA. Four independent modifier uniforms preserve the D3D8 color/alpha
+argument registers. The legacy `MapTextureArgument` helper remains fail-closed
+when modifiers are present so callers cannot silently discard them. XCTest
+covers selector decoding, each modifier, both modifiers together, reserved-bit
+rejection, rendered-pixel complement/alpha-replication behavior, and rejection
+of unsupported modifier bits. The shader uses GLSL ES 1.00-compatible integer
+comparisons rather than bitwise operators.
 
 These tests are unit tests, not a parity test against the Linux adapter's
 deterministic output. This foundation is intentionally not represented as a

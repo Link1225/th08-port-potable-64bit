@@ -46,6 +46,10 @@ static const char *kFragmentShader =
     "uniform int u_alpha_operation;\n"
     "uniform int u_alpha_argument1;\n"
     "uniform int u_alpha_argument2;\n"
+    "uniform int u_color_argument1_modifiers;\n"
+    "uniform int u_color_argument2_modifiers;\n"
+    "uniform int u_alpha_argument1_modifiers;\n"
+    "uniform int u_alpha_argument2_modifiers;\n"
     "uniform float u_alpha_test_enabled;\n"
     "uniform int u_alpha_test_function;\n"
     "uniform float u_alpha_test_reference;\n"
@@ -61,6 +65,11 @@ static const char *kFragmentShader =
     "  if (argument == 0) return textureValue;\n"
     "  if (argument == 1) return v_color;\n"
     "  return u_texture_factor;\n"
+    "}\n"
+    "vec4 applyArgumentModifiers(vec4 value, int modifiers) {\n"
+    "  if (modifiers == 1 || modifiers == 3) value = vec4(1.0) - value;\n"
+    "  if (modifiers == 2 || modifiers == 3) value = vec4(value.a);\n"
+    "  return value;\n"
     "}\n"
     "vec3 applyColorOperation(int operation, vec3 a, vec3 b) {\n"
     "  if (operation == 0) return a;\n"
@@ -84,10 +93,10 @@ static const char *kFragmentShader =
     "}\n"
     "void main() {\n"
     "  vec4 texel = mix(vec4(1.0), texture2D(u_texture, v_texcoord), u_textured);\n"
-    "  vec4 colorA = selectArgument(u_color_argument1, texel);\n"
-    "  vec4 colorB = selectArgument(u_color_argument2, texel);\n"
-    "  vec4 alphaA = selectArgument(u_alpha_argument1, texel);\n"
-    "  vec4 alphaB = selectArgument(u_alpha_argument2, texel);\n"
+    "  vec4 colorA = applyArgumentModifiers(selectArgument(u_color_argument1, texel), u_color_argument1_modifiers);\n"
+    "  vec4 colorB = applyArgumentModifiers(selectArgument(u_color_argument2, texel), u_color_argument2_modifiers);\n"
+    "  vec4 alphaA = applyArgumentModifiers(selectArgument(u_alpha_argument1, texel), u_alpha_argument1_modifiers);\n"
+    "  vec4 alphaB = applyArgumentModifiers(selectArgument(u_alpha_argument2, texel), u_alpha_argument2_modifiers);\n"
     "  vec4 result = vec4(applyColorOperation(u_color_operation, colorA.rgb, colorB.rgb),\n"
     "                     applyAlphaOperation(u_alpha_operation, alphaA.a, alphaB.a));\n"
     "  result.rgb = min(result.rgb + v_specular.rgb, vec3(1.0));\n"
@@ -248,6 +257,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLint _alphaOperationLocation;
     GLint _alphaArgument1Location;
     GLint _alphaArgument2Location;
+    GLint _colorArgument1ModifiersLocation;
+    GLint _colorArgument2ModifiersLocation;
+    GLint _alphaArgument1ModifiersLocation;
+    GLint _alphaArgument2ModifiersLocation;
     GLint _fogEnabledLocation;
     GLint _fogColorLocation;
     GLint _fogStartLocation;
@@ -263,6 +276,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     GLint _alphaOperation;
     GLint _alphaArgument1;
     GLint _alphaArgument2;
+    GLint _colorArgument1Modifiers;
+    GLint _colorArgument2Modifiers;
+    GLint _alphaArgument1Modifiers;
+    GLint _alphaArgument2Modifiers;
     GLfloat _transform[16];
     BOOL _alphaTestEnabled;
     GLint _alphaTestFunction;
@@ -324,6 +341,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaOperationLocation = glGetUniformLocation(_program, "u_alpha_operation");
     _alphaArgument1Location = glGetUniformLocation(_program, "u_alpha_argument1");
     _alphaArgument2Location = glGetUniformLocation(_program, "u_alpha_argument2");
+    _colorArgument1ModifiersLocation = glGetUniformLocation(_program, "u_color_argument1_modifiers");
+    _colorArgument2ModifiersLocation = glGetUniformLocation(_program, "u_color_argument2_modifiers");
+    _alphaArgument1ModifiersLocation = glGetUniformLocation(_program, "u_alpha_argument1_modifiers");
+    _alphaArgument2ModifiersLocation = glGetUniformLocation(_program, "u_alpha_argument2_modifiers");
     _fogEnabledLocation = glGetUniformLocation(_program, "u_fog_enabled");
     _fogColorLocation = glGetUniformLocation(_program, "u_fog_color");
     _fogStartLocation = glGetUniformLocation(_program, "u_fog_start");
@@ -340,6 +361,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaOperation = TH08IOSRendererTextureOperationModulate;
     _alphaArgument1 = TH08IOSRendererTextureArgumentTexture;
     _alphaArgument2 = TH08IOSRendererTextureArgumentDiffuse;
+    _colorArgument1Modifiers = 0;
+    _colorArgument2Modifiers = 0;
+    _alphaArgument1Modifiers = 0;
+    _alphaArgument2Modifiers = 0;
     _fogEnabled = NO;
     _fogColor[0] = _fogColor[1] = _fogColor[2] = 0.0f;
     _fogColor[3] = 1.0f;
@@ -449,6 +474,25 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     _alphaOperation = alphaOperation;
     _alphaArgument1 = alphaArgument1;
     _alphaArgument2 = alphaArgument2;
+    return YES;
+}
+
+- (BOOL)setTextureStageArgumentModifiersColor1:(uint8_t)color1
+                                         color2:(uint8_t)color2
+                                          alpha1:(uint8_t)alpha1
+                                          alpha2:(uint8_t)alpha2
+{
+    const uint8_t supportedMask = 0x03u;
+    if ([EAGLContext currentContext] != _context ||
+        (color1 & ~supportedMask) != 0u ||
+        (color2 & ~supportedMask) != 0u ||
+        (alpha1 & ~supportedMask) != 0u ||
+        (alpha2 & ~supportedMask) != 0u)
+        return NO;
+    _colorArgument1Modifiers = color1;
+    _colorArgument2Modifiers = color2;
+    _alphaArgument1Modifiers = alpha1;
+    _alphaArgument2Modifiers = alpha2;
     return YES;
 }
 
@@ -852,6 +896,10 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     glUniform1i(_alphaOperationLocation, _alphaOperation);
     glUniform1i(_alphaArgument1Location, _alphaArgument1);
     glUniform1i(_alphaArgument2Location, _alphaArgument2);
+    glUniform1i(_colorArgument1ModifiersLocation, _colorArgument1Modifiers);
+    glUniform1i(_colorArgument2ModifiersLocation, _colorArgument2Modifiers);
+    glUniform1i(_alphaArgument1ModifiersLocation, _alphaArgument1Modifiers);
+    glUniform1i(_alphaArgument2ModifiersLocation, _alphaArgument2Modifiers);
     glUniform1f(_fogEnabledLocation, _fogEnabled ? 1.0f : 0.0f);
     glUniform4f(_fogColorLocation, _fogColor[0], _fogColor[1], _fogColor[2], _fogColor[3]);
     glUniform1f(_fogStartLocation, _fogStart);
