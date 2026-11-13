@@ -13,6 +13,10 @@ on:
       - port/portable-64bit
     paths:
       - "ios/BringUp/**"
+      - "ios/Engine/**"
+      - "src/**"
+      - "config/i18n.csv"
+      - "scripts/generate_i18n.py"
       - "ios/Tests/**"
       - "ios/README.md"
       - "ios/RENDERER_PORT.md"

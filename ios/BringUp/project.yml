@@ -12,6 +12,70 @@ settings:
     INFOPLIST_KEY_UIFileSharingEnabled: YES
     INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: NO
 targets:
+  TH08EngineCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: ../../src/AnmManager.cpp
+      - path: ../../src/AsciiManager.cpp
+      - path: ../../src/AsciiManagerBossMarker.cpp
+      - path: ../../src/AsciiManagerGauge.cpp
+      - path: ../../src/AsciiManagerGuiMode.cpp
+      - path: ../../src/AsciiManagerScale.cpp
+      - path: ../../src/Background.cpp
+      - path: ../../src/BulletManager.cpp
+      - path: ../../src/EclDependencies.cpp
+      - path: ../../src/EclExIns.cpp
+      - path: ../../src/EclGlobals.cpp
+      - path: ../../src/EclHelpers.cpp
+      - path: ../../src/EclManager.cpp
+      - path: ../../src/EclOperandsFloat.cpp
+      - path: ../../src/EclOperandsInt.cpp
+      - path: ../../src/EclRun.cpp
+      - path: ../../src/EffectManager.cpp
+      - path: ../../src/Ending.cpp
+      - path: ../../src/EnemyManager.cpp
+      - path: ../../src/EnemyManagerUpdate.cpp
+      - path: ../../src/EnemyTimeline.cpp
+      - path: ../../src/GameManager.cpp
+      - path: ../../src/Global.cpp
+      - path: ../../src/Gui.cpp
+      - path: ../../src/ItemManager.cpp
+      - path: ../../src/Midi.cpp
+      - path: ../../src/MusicRoom.cpp
+      - path: ../../src/Player.cpp
+      - path: ../../src/PlayerBomb.cpp
+      - path: ../../src/ReplayManager.cpp
+      - path: ../../src/ResultScreen.cpp
+      - path: ../../src/ScoreDat.cpp
+      - path: ../../src/ScreenEffect.cpp
+      - path: ../../src/SoundPlayer.cpp
+      - path: ../../src/Spellcard.cpp
+      - path: ../../src/Supervisor.cpp
+      - path: ../../src/TextHelper.cpp
+      - path: ../../src/TitleScreen.cpp
+      - path: ../../src/utils.cpp
+      - path: ../../src/zwave.cpp
+      - path: ../../src/pbg/Lzss.cpp
+      - path: ../../src/pbg/PbgArchive.cpp
+      - path: ../../src/pbg/PbgFile.cpp
+    preBuildScripts:
+      - name: Generate engine internationalization header
+        script: |
+          set -eu
+          OUTPUT_DIR="${DERIVED_FILE_DIR}/generated"
+          mkdir -p "${OUTPUT_DIR}"
+          python3 "${SRCROOT}/../../scripts/generate_i18n.py" \
+            -o "${OUTPUT_DIR}/i18n.hpp" --shift-jis \
+            "${SRCROOT}/../../config/i18n.csv"
+    settings:
+      base:
+        PRODUCT_NAME: TH08EngineCore
+        SKIP_INSTALL: YES
+        CLANG_CXX_LANGUAGE_STANDARD: gnu++98
+        GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) TH08_MODERN_PORT=1 TH08_MODERN_IOS=1 TH08_PORTABLE_NATIVE_LAYOUT=1 WIN32_LEAN_AND_MEAN=1"
+        HEADER_SEARCH_PATHS: "$(inherited) $(SRCROOT)/../../src $(SRCROOT)/../../src/modern/linux/include $(SRCROOT)/TH08BringUp $(DERIVED_FILE_DIR)/generated"
+        OTHER_CPLUSPLUSFLAGS: "$(inherited) -include $(SRCROOT)/../Engine/ios_compat.hpp -Wno-unknown-pragmas"
   TH08BringUp:
     type: application
     platform: iOS
@@ -45,6 +109,7 @@ schemes:
   TH08BringUp:
     build:
       targets:
+        TH08EngineCore: all
         TH08BringUp: all
         TH08BringUpTests: [test]
     test:
