@@ -559,6 +559,14 @@ bool IsValidPrimitive(TH08IOSRendererPrimitive primitive)
     [self applyDrawState];
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
+    if (texture != 0) {
+        // D3D8 sampler state is device state and must affect already-created
+        // textures as well as textures created after the state change.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(_minificationFilter));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(_magnificationFilter));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(_wrapS));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(_wrapT));
+    }
     glUniform1i(_samplerLocation, 0);
     glUniform1f(_texturedLocation, texture != 0 ? 1.0f : 0.0f);
 
