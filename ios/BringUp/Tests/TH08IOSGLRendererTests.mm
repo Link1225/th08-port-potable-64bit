@@ -605,6 +605,32 @@
     [self.renderer deleteTexture:target];
 }
 
+- (void)testSpecularVertexColorAddsToDiffuseInShader
+{
+    const GLuint target = [self.renderer createRenderTargetWithWidth:8 height:8];
+    XCTAssertNotEqual(target, 0u);
+    XCTAssertTrue([self.renderer bindRenderTargetTexture:target]);
+    XCTAssertTrue([self.renderer setViewportX:0 y:0 width:8 height:8]);
+    [self.renderer clearRed:0.0f green:0.0f blue:0.0f alpha:1.0f depth:1.0f];
+
+    TH08IOSRendererVertex vertices[3] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 255, 0, 0, 255, 0.0f, 0, 255, 0, 255},
+        { 1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 255, 0, 0, 255, 0.0f, 0, 255, 0, 255},
+        { 0.0f,  1.0f, 0.0f, 0.5f, 1.0f, 255, 0, 0, 255, 0.0f, 0, 255, 0, 255}
+    };
+    XCTAssertTrue([self.renderer drawVertices:vertices count:3
+                                      primitive:TH08IOSRendererPrimitiveTriangles texture:0]);
+
+    NSData *pixels = [self.renderer copyCurrentFramebufferRGBA8PixelsWithWidth:8 height:8];
+    XCTAssertNotNil(pixels);
+    const uint8_t *bytes = (const uint8_t *)pixels.bytes;
+    const NSUInteger center = (NSUInteger)(4u * 8u + 4u) * 4u;
+    XCTAssertGreaterThan(bytes[center], (uint8_t)200);
+    XCTAssertGreaterThan(bytes[center + 1], (uint8_t)200);
+    XCTAssertLessThan(bytes[center + 2], (uint8_t)20);
+    [self.renderer deleteTexture:target];
+}
+
 - (void)testD3D8FVFLayoutAndDecodeForXYZDiffuseAndUV
 {
     using namespace TH08IOSD3D8;
